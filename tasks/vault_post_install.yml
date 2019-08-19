@@ -1,5 +1,10 @@
 ---
 
+- name: Kernel capabilities
+  when:
+    - install_vault == true
+  command: setcap cap_ipc_lock=+ep /usr/local/bin/vault
+
 - name: Sysconfig
   template: src=vault.sysconfig.j2 dest={{ vault_sysconfig }}
   notify: restart vault

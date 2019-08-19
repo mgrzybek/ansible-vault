@@ -1,0 +1,8 @@
+---
+
+vault_distro_packages:
+  - unzip
+
+vault_sysconfig: /etc/sysconfig/vault
+
+vault_install_prefix: /usr/local/bin

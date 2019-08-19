@@ -1,0 +1,29 @@
+---
+# defaults file for /home/mgrzybek/venezia/ansible-roles//vault
+
+vault_http_proxy: ""
+vault_https_proxy: "{{ vault_http_proxy }}"
+vault_package_state: present # latest
+vault_vault_version: 1.2.2
+vault_vault_repo_url: https://releases.hashicorp.com/vault
+vault_vault_bin_zip_url: "{{ vault_repo_url }}/{{ vault_vault_version }}/vault_{{ vault_vault_version }}_linux_amd64.zip"
+
+# Packaging
+cache_timeout: 600
+
+vault_server_mode: false
+vault_vault_bootstrap_expect:
+vault_vault_cluster:
+
+vault_bind_address: "{{ ansible_default_ipv4.address }}"
+
+vault_advertise_wan:
+
+vault_config_telegraf: false
+
+vault_storage_consul: 127.0.0.1:8500
+vault_tcp_listener: 127.0.0.1:8200
+
+vault_enable_ui: false
+
+vault_tls_disable: 1

@@ -1,0 +1,13 @@
+# {{ ansible_managed }}
+
+storage "consul" {
+	address = "{{ vault_storage_consul }}"
+	path    = "vault/"
+}
+
+ui = {{ vault_enable_ui | lower }}
+
+listener "tcp" {
+	address     = "{{ vault_tcp_listener }}"
+	tls_disable = {{ vault_tls_disable }}
+}

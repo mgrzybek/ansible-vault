@@ -1,0 +1,10 @@
+---
+
+- name: restart vault
+  service: name=vault state=restarted enabled=yes
+
+- name: reload systemd
+  command: systemctl daemon-reload
+
+- name: reload firewalld
+  command: firewall-cmd --reload

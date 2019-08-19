@@ -1,0 +1,49 @@
+---
+
+- name: Install vault packages
+  package:
+    name: "{{ vault_distro_packages }}"
+    state: "{{ vault_package_state }}"
+    update_cache: "{{ (ansible_pkg_mgr == 'apt') | ternary('yes', omit) }}"
+    cache_valid_time: "{{ (ansible_pkg_mgr == 'apt') | ternary(cache_timeout, omit) }}"
+  register: install_packages
+  until: install_packages is success
+  retries: 5
+  delay: 2
+  tags:
+    - install-apt
+    - install-yum
+    - install-zypper
+
+###########################
+# Recuperation du binaire
+
+- name: Install vault
+  when: install_vault == true
+  block:
+    - name: Get vault archive ({{ last_version.stdout }})
+      get_url:
+        url: "{{ vault_vault_repo_url }}/{{ version_to_install }}/vault_{{ version_to_install }}_linux_amd64.zip"
+        dest: "/tmp/vault_bin.zip"
+      environment:
+        http_proxy: "{{ vault_http_proxy }}"
+        https_proxy: "{{ vault_https_proxy }}"
+
+    - name: Install binary
+      unarchive: src="/tmp/vault_bin.zip" dest=/usr/local/bin/ mode=0755 copy=no
+      notify: restart vault
+
+    - name: Cleanup
+      file: path="/tmp/vault_bin.zip" state=absent
+
+#############################################
+# Création des répertoires et service systemd
+
+- name: Create directories
+  file: path={{ item }} state=directory
+  with_items:
+    - /etc/vault.d
+
+- name: Systemd service
+  template: src=vault.service.j2 dest=/etc/systemd/system/vault.service
+  notify: reload systemd

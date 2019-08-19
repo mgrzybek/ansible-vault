@@ -1,0 +1,23 @@
+# {{ ansible_managed }}
+[Unit]
+Description=vault server service
+Documentation=https://www.vaultproject.io
+After=network.target
+
+[Service]
+EnvironmentFile={{ vault_sysconfig }}
+
+Environment=GOMAXPROCS=2
+
+Restart=on-failure
+KillSignal=SIGTERM
+
+ExecStart=/usr/local/bin/vault server -config=/etc/vault.d/vault.hcl
+
+KillMode=process
+Restart=on-failure
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+

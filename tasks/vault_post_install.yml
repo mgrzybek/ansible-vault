@@ -1,0 +1,19 @@
+---
+
+- name: Sysconfig
+  template: src=vault.sysconfig.j2 dest={{ vault_sysconfig }}
+  notify: restart vault
+
+- name: Vault main configuration file
+  template: src=vault.hcl.j2 dest=/etc/vault.d/vault.hcl
+  notify: restart vault
+
+#- name: Telegraf configuration
+#  template: src=vault.telegraf.conf.j2 dest=/etc/telegraf/telegraf.d/vault.conf
+#  notify: restart telegraf
+#  when: vault_config_telegraf == true
+
+#- name: Auto-complétion
+#  become: no
+#  command: vault -autocomplete-install
+#  register: vault_autocomplete

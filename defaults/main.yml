@@ -28,6 +28,8 @@ vault_enable_ui: false
 
 vault_tls_disable: 1
 
+vault_token_create_env_file: true
+vault_token_store_consul_kv: false
 
 vault_secrets_engine_databases: {}
 

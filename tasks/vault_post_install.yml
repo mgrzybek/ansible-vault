@@ -93,3 +93,24 @@
  
           - name: Cleanup script
             file: path=/dev/shm/vault_database_engine.sh state=absent
+
+# TODO: set a local fact in pre_install to manage this
+- name: Create an env file containing the token
+  when:
+    - vault_token_create_env_file | lower == 'true'
+  block:
+    - name: Create .vault.env
+      file:
+        path: "{{ lookup('env', 'HOME') }}/.vault.env"
+        state: touch
+
+    - name: Create an env file containing the token
+        lineinfile:
+        path: "{{ lookup('env', 'HOME') }}/.vault.env"
+        state: present
+        regexp: "^$"
+        line: "VAULT_TOKEN={{ vault_init.root_token }}"
+
+    - name: Store the bootstrap token into consul
+      when: vault_token_store_consul_kv | lower == 'true'
+      command: consul kv put vault/root_token {{ vault_init.root_token }}

@@ -105,7 +105,7 @@
         state: touch
 
     - name: Create an env file containing the token
-        lineinfile:
+      lineinfile:
         path: "{{ lookup('env', 'HOME') }}/.vault.env"
         state: present
         regexp: "^$"

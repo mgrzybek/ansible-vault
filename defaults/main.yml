@@ -25,6 +25,7 @@ vault_storage_consul: 127.0.0.1:8500
 vault_tcp_listener: 127.0.0.1:8200
 
 vault_enable_ui: false
+vault_consul_service_path: /etc/consul.d
 
 vault_tls_disable: 1
 

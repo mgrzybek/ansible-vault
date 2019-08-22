@@ -46,84 +46,87 @@
       environment:
         VAULT_ADDR: "{{ vault_addr }}"
 
-    - name: Set init facts
-      set_fact: vault_init="{{ vault_init_result.stdout | from_json }}"
-
-    - debug: msg="{{ vault_init.unseal_keys_hex }}"
-
-    - name: Unseal vault
-      shell: consul lock vault_init vault operator unseal {{ item }}
-      with_items: "{{ vault_init.unseal_keys_hex }}"
-      environment:
-        VAULT_ADDR: "{{ vault_addr }}"
-
-    # Auth configuration
-    # TODO: write a generic key,value loop
-    - name: Enable LDAP auth engine
-      when: vault_auth_ldap | length > 0
-      with_items: "{{ vault_auth_ldap }}"
-      environment:
-        VAULT_TOKEN: "{{ vault_init.root_token }}"
-        VAULT_ADDR: "{{ vault_addr }}"
-      shell: >
-          vault auth enable \
-              -path={{ item.name }} \
-              {% if item.description is defined %}
-              -description="{{ item.description }}" \
-              {% endif %}
-              ldap
-
-    - name: Configure LDAP auth engine
-      when: vault_auth_ldap | length > 0
-      with_items: "{{ vault_auth_ldap }}"
-      environment:
-        VAULT_TOKEN: "{{ vault_init.root_token }}"
-        VAULT_ADDR: "{{ vault_addr }}"
-      shell: >
-          consul lock vault_auth_config \
-              vault write auth/{{ item.name }}/config \
-                  url="{{ item.url }}" \
-                  binddn="{{ item.binddn }}" \
-                  {% if item.bindpass is defined and item.bindpass | length > 0 %}
-                  bindpass="{{ item.bindpass }}" \
-                  {% endif %}
-                  userdn="{{ item.userdn }}" \
-                  userattr="{{ item.userattr }}" \
-                  {% if item.groupfilter is defined and item.groupfilter | length > 0 %}
-                  groupfilter="{{ item.groupfilter }}" \
-                  groupdn="{{ item.groupdn }}" \
-                  groupattr="{{ item.groupattr }}"
-                  {% endif %}
-
-    - name: Configure database secret engine
-      when: vault_secrets_engine_databases | length > 0
+    - name: Continue if vault is not initialized
+      when: vault_init_result.stderr_lines | length == 0
       block:
-          - name: Create script
-            template: src=vault_database_engine.sh.j2 dest=/dev/shm/vault_database_engine.sh
+        - name: Set init facts
+          set_fact: vault_init="{{ vault_init_result.stdout | from_json }}"
 
-          - name: Run script
-            shell: VAULT_TOKEN={{ vault_token }} VAULT_ADDR={{ vault_addr }} lock vault_database_engine sh /dev/shm/vault_database_engine.sh
+        - debug: msg="{{ vault_init.unseal_keys_hex }}"
 
-          - name: Cleanup script
-            file: path=/dev/shm/vault_database_engine.sh state=absent
+        - name: Unseal vault
+          shell: consul lock vault_init vault operator unseal {{ item }}
+          with_items: "{{ vault_init.unseal_keys_hex }}"
+          environment:
+            VAULT_ADDR: "{{ vault_addr }}"
 
-# TODO: set a local fact in pre_install to manage this
-- name: Create an env file containing the token
-  when:
-    - vault_token_create_env_file | lower == 'true'
-  block:
-    - name: Create .vault.env
-      file:
-        path: "{{ lookup('env', 'HOME') }}/.vault.env"
-        state: touch
+        # Auth configuration
+        # TODO: write a generic key,value loop
+        - name: Enable LDAP auth engine
+          when: vault_auth_ldap | length > 0
+          with_items: "{{ vault_auth_ldap }}"
+          environment:
+            VAULT_TOKEN: "{{ vault_init.root_token }}"
+            VAULT_ADDR: "{{ vault_addr }}"
+          shell: >
+              vault auth enable \
+                  -path={{ item.name }} \
+                  {% if item.description is defined %}
+                  -description="{{ item.description }}" \
+                  {% endif %}
+                  ldap
 
-    - name: Create an env file containing the token
-      lineinfile:
-        path: "{{ lookup('env', 'HOME') }}/.vault.env"
-        state: present
-        regexp: "^$"
-        line: "VAULT_TOKEN={{ vault_init.root_token }}"
+        - name: Configure LDAP auth engine
+          when: vault_auth_ldap | length > 0
+          with_items: "{{ vault_auth_ldap }}"
+          environment:
+            VAULT_TOKEN: "{{ vault_init.root_token }}"
+            VAULT_ADDR: "{{ vault_addr }}"
+          shell: >
+              consul lock vault_auth_config \
+                  vault write auth/{{ item.name }}/config \
+                      url="{{ item.url }}" \
+                      binddn="{{ item.binddn }}" \
+                      {% if item.bindpass is defined and item.bindpass | length > 0 %}
+                      bindpass="{{ item.bindpass }}" \
+                      {% endif %}
+                      userdn="{{ item.userdn }}" \
+                      userattr="{{ item.userattr }}" \
+                      {% if item.groupfilter is defined and item.groupfilter | length > 0 %}
+                      groupfilter="{{ item.groupfilter }}" \
+                      groupdn="{{ item.groupdn }}" \
+                      groupattr="{{ item.groupattr }}"
+                      {% endif %}
 
-    - name: Store the bootstrap token into consul
-      when: vault_token_store_consul_kv | lower == 'true'
-      command: consul kv put vault/root_token {{ vault_init.root_token }}
+        - name: Configure database secret engine
+          when: vault_secrets_engine_databases | length > 0
+          block:
+              - name: Create script
+                template: src=vault_database_engine.sh.j2 dest=/dev/shm/vault_database_engine.sh
+
+              - name: Run script
+                shell: VAULT_TOKEN={{ vault_token }} VAULT_ADDR={{ vault_addr }} lock vault_database_engine sh /dev/shm/vault_database_engine.sh
+
+              - name: Cleanup script
+                file: path=/dev/shm/vault_database_engine.sh state=absent
+
+        # TODO: set a local fact in pre_install to manage this
+        - name: Create an env file containing the token
+          when:
+            - vault_token_create_env_file | lower == 'true'
+          block:
+            - name: Create .vault.env
+              file:
+                path: "{{ lookup('env', 'HOME') }}/.vault.env"
+                state: touch
+
+            - name: Create an env file containing the token
+              lineinfile:
+                path: "{{ lookup('env', 'HOME') }}/.vault.env"
+                state: present
+                regexp: "^$"
+                line: "VAULT_TOKEN={{ vault_init.root_token }}"
+
+            - name: Store the bootstrap token into consul
+              when: vault_token_store_consul_kv | lower == 'true'
+              command: consul kv put vault/root_token {{ vault_init.root_token }}

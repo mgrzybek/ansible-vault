@@ -41,8 +41,10 @@
   run_once: true
   block:
     - name: Init vault
-      command: consul lock vault_init vault operator init -key-shares=3 -key-threshold=2 -format=json
+      shell: consul lock vault_init vault operator init -key-shares=3 -key-threshold=2 -format=json
       register: vault_init_result
+      environment:
+        VAULT_ADDR: "{{ vault_addr }}"
 
     - name: Set init facts
       set_fact: vault_init="{{ vault_init_result.stdout | from_json }}"
@@ -50,10 +52,10 @@
     - debug: msg="{{ vault_init.unseal_keys_hex }}"
 
     - name: Unseal vault
-      environment:
-        VAULT_ADDR: "{{ vault_addr }}"
       shell: consul lock vault_init vault operator unseal {{ item }}
       with_items: "{{ vault_init.unseal_keys_hex }}"
+      environment:
+        VAULT_ADDR: "{{ vault_addr }}"
 
     # Auth configuration
     # TODO: write a generic key,value loop

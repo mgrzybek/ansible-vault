@@ -50,7 +50,9 @@
     - debug: msg="{{ vault_init.unseal_keys_hex }}"
 
     - name: Unseal vault
-      command: consul lock vault_init vault operator unseal {{ item }}
+      environment:
+        VAULT_ADDR: "{{ vault_addr }}"
+      shell: consul lock vault_init vault operator unseal {{ item }}
       with_items: "{{ vault_init.unseal_keys_hex }}"
 
     # Auth configuration

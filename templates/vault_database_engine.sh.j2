@@ -1,0 +1,20 @@
+vault auth enable database \
+	|| exit 1
+
+{% for item in vault_secrets_engine_databases %}
+vault write database/config/{{ item.name }} \
+	plugin_name={{ item.plugin_name }} \
+	allowed_roles="{{ item.allowed_roles | join(',') }}" \
+	connection_url="{{ item.db_engine }}://{{ '{{' }}username{{ '}}' }}:{{ '{{' }}password{{ '}}' }}@{{ item.host }}:{{ item.port }}/" \
+	username="{{ item.username }}" \
+	password="{{ item.password }}" \
+	|| exit 1
+
+vault write database/roles/{{ item.name }}-role \
+	db_name={{ item.name }} \
+	creation_statements="CREATE ROLE \"{{ '{{' }}name{{ '}}'' }}\" WITH LOGIN PASSWORD '{{ '{{' }}password{{ '}}' }}' VALID UNTIL '{{ '{{' }}expiration{{ '}}' }}'; \
+		GRANT SELECT ON ALL TABLES IN SCHEMA public TO \"{{ '{{' }}name{{ '}}' }}\";" \
+	default_ttl="1h" \
+	max_ttl="24h" \
+	|| exit 1
+{% endfor %}

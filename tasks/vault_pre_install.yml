@@ -8,6 +8,8 @@
   set_fact:
     use_firewalld: false
     install_vault: false
+    configure_consul_vault_ui: false
+    vault_addr: "http{% if vault_tls_disable != 1 %}s{% endif %}://{{ vault_tcp_listener }}"
 
 - name: Set firewall facts
   when: firewalld_service.stdout.find('active') > -1
@@ -64,3 +66,9 @@
 #- name: Check telegraf
 #  shell: systemctl is-active telegraf 2>/dev/null || echo ko && exit 0
 #  register: telegraf_service
+
+- name: Activate nomad ui as a consul service
+  set_fact: configure_consul_vault_ui=true
+  when:
+    - vault_enable_ui | lower == 'true'
+    - consul_service.stdout.find('ko') < 0

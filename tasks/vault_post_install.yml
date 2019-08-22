@@ -2,7 +2,7 @@
 
 - name: Kernel capabilities
   when:
-    - install_vault == true
+    - install_vault | lower == 'true'
   command: setcap cap_ipc_lock=+ep /usr/local/bin/vault
 
 - name: Sysconfig
@@ -22,6 +22,13 @@
 #  become: no
 #  command: vault -autocomplete-install
 #  register: vault_autocomplete
+
+- name: Consul monitoring
+  when:
+    - configure_consul_vault_ui | lower == 'true'
+  template: src=service.consul.json.j2 dest={{ vault_consul_services_path }}/{{ item.service.name }}.json
+  with_items: "{{ vault_vault_ui }}"
+  notify: reload consul
 
 # TODO: [WARN]  no `api_addr` value specified in config or in VAULT_API_ADDR; falling back to detection if possible, but this value should be manually set
 # TODO: [INFO]  core: seal configuration missing, not initialized
@@ -53,6 +60,7 @@
       with_items: "{{ vault_auth_ldap }}"
       environment:
         VAULT_TOKEN: "{{ vault_init.root_token }}"
+        VAULT_ADDR: "{{ vault_addr }}"
       shell: >
           vault auth enable \
               -path={{ item.name }} \
@@ -66,6 +74,7 @@
       with_items: "{{ vault_auth_ldap }}"
       environment:
         VAULT_TOKEN: "{{ vault_init.root_token }}"
+        VAULT_ADDR: "{{ vault_addr }}"
       shell: >
           consul lock vault_auth_config \
               vault write auth/{{ item.name }}/config \
@@ -89,8 +98,8 @@
             template: src=vault_database_engine.sh.j2 dest=/dev/shm/vault_database_engine.sh
 
           - name: Run script
-            shell: VAULT_TOKEN={{ vault_token }} consul lock vault_database_engine sh /dev/shm/vault_database_engine.sh
- 
+            shell: VAULT_TOKEN={{ vault_token }} VAULT_ADDR={{ vault_addr }} lock vault_database_engine sh /dev/shm/vault_database_engine.sh
+
           - name: Cleanup script
             file: path=/dev/shm/vault_database_engine.sh state=absent
 

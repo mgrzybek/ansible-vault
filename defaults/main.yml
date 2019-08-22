@@ -28,6 +28,17 @@ vault_enable_ui: false
 
 vault_tls_disable: 1
 
+vault_vault_ui:
+    - service:
+        name: "vault-ui"
+        port: 8200
+        enable_tag_override: false
+        tags:
+            - "vault"
+        checks:
+            - http: "http://0.0.0.0:8200"
+              interval: "60s"
+
 vault_token_create_env_file: true
 vault_token_store_consul_kv: false
 

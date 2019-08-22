@@ -22,3 +22,74 @@
 #  become: no
 #  command: vault -autocomplete-install
 #  register: vault_autocomplete
+
+# TODO: [WARN]  no `api_addr` value specified in config or in VAULT_API_ADDR; falling back to detection if possible, but this value should be manually set
+# TODO: [INFO]  core: seal configuration missing, not initialized
+# TODO: https://shapeshed.com/hashicorp-vault-ldap/
+
+- name: Flush handlers before post configuration
+  meta: flush_handlers
+
+- name: Vault post configuration
+  run_once: true
+  block:
+    - name: Init vault
+      command: consul lock vault_init vault operator init -key-shares=3 -key-threshold=2 -format=json
+      register: vault_init_result
+
+    - name: Set init facts
+      set_fact: vault_init="{{ vault_init_result.stdout | from_json }}"
+
+    - debug: msg="{{ vault_init.unseal_keys_hex }}"
+
+    - name: Unseal vault
+      command: consul lock vault_init vault operator unseal {{ item }}
+      with_items: "{{ vault_init.unseal_keys_hex }}"
+
+    # Auth configuration
+    # TODO: write a generic key,value loop
+    - name: Enable LDAP auth engine
+      when: vault_auth_ldap | length > 0
+      with_items: "{{ vault_auth_ldap }}"
+      environment:
+        VAULT_TOKEN: "{{ vault_init.root_token }}"
+      shell: >
+          vault auth enable \
+              -path={{ item.name }} \
+              {% if item.description is defined %}
+              -description="{{ item.description }}" \
+              {% endif %}
+              ldap
+
+    - name: Configure LDAP auth engine
+      when: vault_auth_ldap | length > 0
+      with_items: "{{ vault_auth_ldap }}"
+      environment:
+        VAULT_TOKEN: "{{ vault_init.root_token }}"
+      shell: >
+          consul lock vault_auth_config \
+              vault write auth/{{ item.name }}/config \
+                  url="{{ item.url }}" \
+                  binddn="{{ item.binddn }}" \
+                  {% if item.bindpass is defined and item.bindpass | length > 0 %}
+                  bindpass="{{ item.bindpass }}" \
+                  {% endif %}
+                  userdn="{{ item.userdn }}" \
+                  userattr="{{ item.userattr }}" \
+                  {% if item.groupfilter is defined and item.groupfilter | length > 0 %}
+                  groupfilter="{{ item.groupfilter }}" \
+                  groupdn="{{ item.groupdn }}" \
+                  groupattr="{{ item.groupattr }}"
+                  {% endif %}
+
+    - name: Configure database secret engine
+      when: vault_secrets_engine_databases | length > 0
+      block:
+          - name: Create script
+            template: src=vault_database_engine.sh.j2 dest=/dev/shm/vault_database_engine.sh
+
+          - name: Run script
+            shell: VAULT_TOKEN={{ vault_token }} consul lock vault_database_engine sh /dev/shm/vault_database_engine.sh
+ 
+          - name: Cleanup script
+            file: path=/dev/shm/vault_database_engine.sh state=absent

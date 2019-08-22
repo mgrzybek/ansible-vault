@@ -27,3 +27,19 @@ vault_tcp_listener: 127.0.0.1:8200
 vault_enable_ui: false
 
 vault_tls_disable: 1
+
+
+vault_secrets_engine_databases: {}
+
+vault_auth_ldap: []
+#vault_auth_ldap: 
+#    - name:
+#      description:
+#      url:
+#      binddn:
+#      bindpass:
+#      userdn:
+#      userattr:
+#      groupfilter:
+#      groupdn:
+#      groupattr:

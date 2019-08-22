@@ -67,8 +67,17 @@
 #  shell: systemctl is-active telegraf 2>/dev/null || echo ko && exit 0
 #  register: telegraf_service
 
-- name: Activate nomad ui as a consul service
-  set_fact: configure_consul_vault_ui=true
+- name: Create consul_bin variable
   when:
     - vault_enable_ui | lower == 'true'
     - consul_service.stdout.find('ko') < 0
+  block:
+    - name: Récupération du path de la commande consul
+      shell: systemctl show -p ExecStart consul|tr ' ' '\n'|awk -F= '/path=/ {print $2}'
+      register: consul_bin_path
+
+    - name: Set consul bin path
+      set_fact: consul_bin="{{ consul_bin_path.stdout }}"
+
+    - name: Activate nomad ui as a consul service
+      set_fact: configure_consul_vault_ui=true

@@ -75,10 +75,34 @@
             
     - name: Get already created token
       when: vault_init_result.stderr_lines | length > 0
-      set_fact:
-          vault_root_token: "{{ lookup('file', '{{ vault_env_root_path }}/.vault.env') | regex_replace('^VAULT_TOKEN=','')}}"
+      block:
+        - name: Check file
+          stat: path="{{ vault_env_root_path }}/.vault.env"
+          register: vault_env_result
+
+        - name: Get root token from file
+          when: vault_env_result.stat.exists is true
+          set_fact:
+              vault_root_token: "{{ lookup('file', '{{ vault_env_root_path }}/.vault.env') | regex_replace('^VAULT_TOKEN=','')}}"
+
+        - name: Get root token from consul kv
+          until: consul_kv_root_token.stdout | length > 0
+          retries: 10
+          delay: 30
+          when:
+            - vault_env_result.stat.exists is false
+            - vault_token_store_consul_kv | lower == 'true'
+          register: consul_kv_root_token
+          shell: consul kv get vault/root_token
+          environment:
+            CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
+
+        - name: Set local fact
+          set_fact:
+            vault_root_token: "{{ consul_kv_root_token.stdout }}"
 
     - name: Get vault status
+      when: vault_root_token is defined
       shell: vault status
       register: vault_status
       environment:
@@ -87,6 +111,7 @@
 
     - name: Configure vault
       when:
+        - vault_root_token is defined
         - vault_status.stderr_lines | length == 0
         - vault_status.stdout_lines[12] | regex_search(' active$') != None
       block:

@@ -76,7 +76,7 @@
     - name: Get already created token
       when: vault_init_result.stderr_lines | length > 0
       set_fact:
-          vault_root_token: "{{ lookup('file', '{{ansible_env.HOME}}/.vault.env') | regex_replace('^VAULT_TOKEN=','')}}"
+          vault_root_token: "{{ lookup('file', '{{ vault_env_root_path }}/.vault.env') | regex_replace('^VAULT_TOKEN=','')}}"
 
     - name: Get vault status
       shell: vault status
@@ -103,12 +103,12 @@
           block:
             - name: Create .vault.env
               file:
-                path: "{{ lookup('env', 'HOME') }}/.vault.env"
+                path: "{{ vault_env_root_path }}/.vault.env"
                 state: touch
 
             - name: Create an env file containing the token
               lineinfile:
-                path: "{{ lookup('env', 'HOME') }}/.vault.env"
+                path: "{{ vault_env_root_path }}/.vault.env"
                 state: present
                 regexp: "^(VAULT_TOKEN=.+){0,1}$"
                 line: "VAULT_TOKEN={{ vault_root_token }}"

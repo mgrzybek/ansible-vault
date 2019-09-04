@@ -11,6 +11,16 @@
     configure_consul_vault_ui: false
     vault_addr: "http{% if vault_tls_disable != 1 %}s{% endif %}://{{ vault_tcp_listener }}"
 
+- name: Set local facts (home)
+  when: ansible_env.HOME is undefined
+  set_fact:
+    vault_env_root_path: /root
+
+- name: Set local facts (home)
+  when: ansible_env.HOME is defined
+  set_fact:
+    vault_env_root_path: "{{ ansible_env.HOME }}"
+
 - name: Set firewall facts
   when: firewalld_service.stdout.find('active') > -1
   set_fact:

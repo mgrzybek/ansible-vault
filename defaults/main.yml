@@ -21,6 +21,7 @@ vault_advertise_wan:
 
 vault_config_telegraf: false
 
+vault_consul_token:
 vault_storage_consul: 127.0.0.1:8500
 vault_tcp_listener: 127.0.0.1:8200
 

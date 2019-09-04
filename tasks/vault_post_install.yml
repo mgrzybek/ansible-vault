@@ -90,7 +90,7 @@
           retries: 10
           delay: 30
           when:
-            - vault_env_result.stat.exists is false
+            - vault_env_result.stat.exists | lower == 'false'
             - vault_token_store_consul_kv | lower == 'true'
           register: consul_kv_root_token
           shell: consul kv get vault/root_token

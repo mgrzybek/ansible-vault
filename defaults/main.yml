@@ -43,6 +43,7 @@ vault_vault_ui:
 
 vault_token_create_env_file: true
 vault_token_store_consul_kv: false
+vault_keys_store_consul_kv: false
 
 vault_secrets_engine_databases: []
 vault_secrets_engine_consul: []

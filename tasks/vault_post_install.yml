@@ -47,6 +47,7 @@
   block:
     - name: Init vault
       register: vault_init_result
+      ignore_errors: yes
       environment:
         VAULT_ADDR: "{{ vault_addr }}"
         CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
@@ -64,7 +65,7 @@
           set_fact: vault_init="{{ vault_init_result.stdout | from_json }}"
 
         - name: Unseal vault
-          shell: consul lock vault_init vault operator unseal {{ item }}
+          shell: vault operator unseal {{ item }}
           with_items: "{{ vault_init.unseal_keys_hex }}"
           environment:
             VAULT_ADDR: "{{ vault_addr }}"
@@ -73,47 +74,70 @@
         - name: Set root token
           set_fact: vault_root_token="{{ vault_init.root_token }}"
             
-    - name: Get already created token
+    - name: Continue if vault has already been initialized
       when: vault_init_result.stderr_lines | length > 0
       block:
-        - name: Check file
-          stat: path="{{ vault_env_root_path }}/.vault.env"
-          register: vault_env_result
+        - name: Get root token
+          block:
+            - name: Check file
+              stat: path="{{ vault_env_root_path }}/.vault.env"
+              register: vault_env_result
 
-        - name: Get root token from file
-          when: vault_env_result.stat.exists | lower == 'true'
-          set_fact:
-              vault_root_token: "{{ lookup('file', '{{ vault_env_root_path }}/.vault.env') | regex_replace('^VAULT_TOKEN=','')}}"
+            - name: Get root token from file
+              when: vault_env_result.stat.exists | lower == 'true'
+              set_fact:
+                  vault_root_token: "{{ lookup('file', '{{ vault_env_root_path }}/.vault.env') | regex_replace('^VAULT_TOKEN=','')}}"
 
-        - name: Get root token from consul kv
-          until: consul_kv_root_token.stdout | length > 0
-          retries: 10
-          delay: 30
+            - name: Get root token from consul kv
+              until: consul_kv_root_token.stdout | length > 0
+              retries: 10
+              delay: 30
+              when:
+                - vault_env_result.stat.exists | lower == 'false'
+                - vault_token_store_consul_kv | lower == 'true'
+              register: consul_kv_root_token
+              shell: consul kv get vault/root_token
+              environment:
+                CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
+
+            - name: Set local fact
+              set_fact:
+                vault_root_token: "{{ consul_kv_root_token.stdout }}"
+
+        - name: Get the keys to unseal the vault
           when:
-            - vault_env_result.stat.exists | lower == 'false'
-            - vault_token_store_consul_kv | lower == 'true'
-          register: consul_kv_root_token
-          shell: consul kv get vault/root_token
-          environment:
-            CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
+            - vault_keys_store_consul_kv | lower == 'true'
+          block:
+            - name: Get the keys from consul kv
+              until: consul_kv_keys.stdout | length > 0
+              retries: 10
+              delay: 30
+              register: consul_kv_keys
+              shell: consul kv get vault/keys
+              environment:
+                 CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"     
 
-        - name: Set local fact
-          set_fact:
-            vault_root_token: "{{ consul_kv_root_token.stdout }}"
+            - name: Unseal vault
+              shell: vault operator unseal {{ item }}
+              with_items: "{{ consul_kv_keys.stdout }}"
+              environment:
+                VAULT_ADDR: "{{ vault_addr }}"
 
     - name: Get vault status
       when: vault_root_token is defined
       shell: vault status
       register: vault_status
+      ignore_errors: yes
       environment:
         VAULT_TOKEN: "{{ vault_root_token }}"
         VAULT_ADDR: "{{ vault_addr }}"
 
     - name: Configure vault
       when:
-        - vault_root_token is defined
-        - vault_status.stderr_lines | length == 0
-        - vault_status.stdout_lines[12] | regex_search(' active$') != None
+        - vault_root_token is defined # We have the root token
+        - vault_status.stderr_lines | length == 0 # No error from vault status
+        - vault_status.stdout_lines[4] | regex_search('false$') != None # sealed is false
+        - vault_status.stdout_lines[12] | regex_search(' active$') != None # HA Mode is active
       block:
         - name: Auth engines configuration
           import_tasks: vault_post_install_auth_engines.yml

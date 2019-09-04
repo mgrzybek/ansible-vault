@@ -1,0 +1,38 @@
+--- 
+
+- name: Enable LDAP auth engine
+  when: vault_auth_ldap | length > 0
+  block:
+    - name: Enable LDAP auth engine
+      with_items: "{{ vault_auth_ldap }}"
+      environment:
+         VAULT_TOKEN: "{{ vault_root_token }}"
+         VAULT_ADDR: "{{ vault_addr }}"
+      shell: >
+          vault auth enable \
+             -path={{ item.name }} \
+             {% if item.description is defined %}
+             -description="{{ item.description }}" \
+             {% endif %}
+             ldap
+
+    - name: Configure LDAP auth engine
+      with_items: "{{ vault_auth_ldap }}"
+      environment:
+         VAULT_TOKEN: "{{ vault_root_token }}"
+         VAULT_ADDR: "{{ vault_addr }}"
+         CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
+      shell: >
+         vault write auth/{{ item.name }}/config \
+             url="{{ item.url }}" \
+             binddn="{{ item.binddn }}" \
+             {% if item.bindpass is defined and item.bindpass | length > 0 %}
+             bindpass="{{ item.bindpass }}" \
+             {% endif %}
+             userdn="{{ item.userdn }}" \
+             userattr="{{ item.userattr }}" \
+             {% if item.groupfilter is defined and item.groupfilter | length > 0 %}
+             groupfilter="{{ item.groupfilter }}" \
+             groupdn="{{ item.groupdn }}" \
+             groupattr="{{ item.groupattr }}"
+             {% endif %}

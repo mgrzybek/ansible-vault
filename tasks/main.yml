@@ -22,3 +22,9 @@
 - import_tasks: vault_post_install.yml
   tags:
     - vault-post-install
+
+- include_tasks: vault_post_install_policy.yml
+  with_items: "{{ vault_policies }}"
+  run_once: true
+  tags:
+    - vault-post-install

@@ -1,0 +1,13 @@
+---
+
+- name: Create policy HCL file
+  template:
+    src: policy.hcl.j2
+    dest: /tmp/policy.hcl
+
+- name: Configure policies
+  environment:
+    VAULT_TOKEN: "{{ vault_init.root_token }}"
+    VAULT_ADDR: "{{ vault_addr }}"
+  shell: >
+    vault policy write {{ item.name }} /tmp/policy.hcl

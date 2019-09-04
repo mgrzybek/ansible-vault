@@ -1,0 +1,25 @@
+{% for rule in item.paths %}
+path "{{ rule.path }}" {
+	capabilities = ["{{ rule.capabilities | join(',') }}"]
+{% if rule.allowed_parameters is defined and rule.allowed_parameters | length > 0 %}
+	allowed_parameters = {
+{% for k in rule.allowed_parameters %}
+		"{{ k }}" = "{{ rule.allowed_parameters[k] }}"
+{% endfor %}
+	}
+{% endif %}
+{% if rule.denied_parameters is defined and rule.denied_parameters| length > 0 %}
+	denied_parameters = {
+{% for k in rule.denied_parameters %}
+		"{{ k }}" = "{{ rule.denied_parameters[k] }}"
+{% endfor %}
+	}
+{% endif %}
+{% if rule.min_wrapping_ttl is defined and rule.min_wrapping_ttl | length > 0 %}
+	min_wrapping_ttl = "{{ rule.min_wrapping_ttl }}"
+{% endif %}
+{% if rule.max_wrapping_ttl is defined and rule.max_wrapping_ttl | length > 0 %}
+	max_wrapping_ttl = "{{ rule.max_wrapping_ttl }}"
+{% endif %}
+}
+{% endfor %} 

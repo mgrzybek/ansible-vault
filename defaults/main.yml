@@ -43,7 +43,12 @@ vault_vault_ui:
 vault_token_create_env_file: true
 vault_token_store_consul_kv: false
 
-vault_secrets_engine_databases: {}
+vault_secrets_engine_databases: []
+vault_secrets_engine_consul: []
+#vault_secrets_engine_consul:
+#    - name:
+#      description:
+#      token:
 
 vault_auth_ldap: []
 #vault_auth_ldap: 
@@ -57,3 +62,14 @@ vault_auth_ldap: []
 #      groupfilter:
 #      groupdn:
 #      groupattr:
+
+vault_policies: []
+#vault_policies:
+#  - name:
+#    paths:
+#        - path:
+#          capabilities: []
+#          min_wrapping_ttl:
+#          max_wrapping_ttl:
+#          allowed_parameters: {}
+#          denied_parameters: {}

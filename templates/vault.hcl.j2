@@ -3,6 +3,7 @@
 storage "consul" {
 	address = "{{ vault_storage_consul }}"
 	path    = "vault/"
+	token   = "{{ vault_consul_token }}"
 }
 
 ui = {{ vault_enable_ui | lower }}

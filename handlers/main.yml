@@ -10,4 +10,6 @@
   command: firewall-cmd --reload
 
 - name: reload consul
-  command: "{{ consul_bin }} reload"
+  environment:
+    CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
+  shell: "{{ consul_bin }} reload"

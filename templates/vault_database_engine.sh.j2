@@ -1,20 +1,81 @@
-vault auth enable database \
-	|| exit 1
-
 {% for item in vault_secrets_engine_databases %}
-vault write database/config/{{ item.name }} \
-	plugin_name={{ item.plugin_name }} \
-	allowed_roles="{{ item.allowed_roles | join(',') }}" \
-	connection_url="{{ item.db_engine }}://{{ '{{' }}username{{ '}}' }}:{{ '{{' }}password{{ '}}' }}@{{ item.host }}:{{ item.port }}/" \
-	username="{{ item.username }}" \
-	password="{{ item.password }}" \
+###############################################################################
+# Database plugins
+#
+vault secrets enable \
+	-path={{ item.path }} \
+{% if item.description is defined %}
+	-description="{{ item.description }}" \
+{% endif %}
+	database \
 	|| exit 1
 
-vault write database/roles/{{ item.name }}-role \
-	db_name={{ item.name }} \
-	creation_statements="CREATE ROLE \"{{ '{{' }}name{{ '}}'' }}\" WITH LOGIN PASSWORD '{{ '{{' }}password{{ '}}' }}' VALID UNTIL '{{ '{{' }}expiration{{ '}}' }}'; \
-		GRANT SELECT ON ALL TABLES IN SCHEMA public TO \"{{ '{{' }}name{{ '}}' }}\";" \
-	default_ttl="1h" \
-	max_ttl="24h" \
+{% if item.plugin_name == "oracle-database-plugin" %}
+vault write sys/plugins/catalog/database/oracle-database-plugin \
+	sha256="{{ item.sha256 }}" \
+	command=vault-plugin-database-oracle
+{% endif %}
+
+vault write {{ item.path }}/config/{{ item.name }} \
+	plugin_name="{{ item.plugin_name }}" \
+	verify_connection={{ item.verify_connection | lower }} \
+	allowed_roles={{ item | json_query('allowed_roles[*].name') | join(',') }} \
+	username={{ item.username }} \
+	password={{ item.password }} \
+{% if item.plugin_name == "cassandra-database-plugin" %}
+	hosts={{ item.hosts }} \
+	protocol_version={{ item.protocol_version }} \
+	allowed_roles={{ item | json_query('allowed_roles[*].name') | join(',') }} \
+{% endif %}
+{% if item.plugin_name == "elasticsearch-database-plugin" %}
+	url={{ item.url }} \
+	ca_cert={{ item.ca_cert }} \
+	client_cert={{ item.client_cert }} \
+	client_key={{ item.client_key }} \
+{% endif %}
+{% if item.plugin_name == "influxdb-database-plugin" %}
+	connection_url="influxdb://{{ '{{' }}username}}:{{ '{{' }}password}}@{{ item.host }}:{{ item.port }}{% if item.connection_options | length > 0 %}/?{{ item.connection_options | join('&') }}{% endif %}" \
+	host={{ item.host }} \
+{% endif %}
+{% if item.plugin_name == "hanadb-database-plugin" %}
+	connection_url="hdb://{{ '{{' }}username}}:{{ '{{' }}password}}@{{ item.host }}:{{ item.port }}{% if item.connection_options | length > 0 %}/?{{ item.connection_options | join('&') }}{% endif %}" \
+{% endif %}
+{% if item.plugin_name == "mongodb-database-plugin" %}
+	connection_url="mongodb://{{ '{{' }}username}}:{{ '{{' }}password}}@{{ item.host }}:{{ item.port }}/{{ item.database }}{% if item.connection_options | length > 0 %}?{{ item.connection_options | join('&') }}{% endif %}" \
+{% endif %}
+{% if item.plugin_name == "mssql-database-plugin" %}
+	connection_url='sqlserver://{{ '{{' }}username}}:{{ '{{' }}password}}@{{ item.host }}:{{ item.port }}{% if item.connection_options | length > 0 %}/?{{ item.connection_options | join('&') }}{% endif %}' \
+{% endif %}
+{% if item.plugin_name == "mysql-database-plugin" %}
+	connection_url="{{ '{{' }}username}}:{{ '{{' }}password}}@tcp({{ item.host }}:{{ item.port }}){% if item.connection_options | length > 0 %}/?{{ item.connection_options | join('&') }}{% endif %}" \
+{% endif %}
+{% if item.plugin_name == "postgresql-database-plugin" %}
+	connection_url="postgresql://{{ '{{' }}username}}:{{ '{{' }}password}}@{{ item.host }}:{{ item.port }}{% if item.connection_options | length > 0 %}/?{{ item.connection_options | join('&') }}{% endif %}" \
+{% endif %}
+{% if item.plugin_name == "oracle-database-plugin" %}
+	connection_url="{{ item.connection_url }}" \
+{% endif %}
 	|| exit 1
+
+###############################################################################
+# Database roles
+#
+{% for role in item.allowed_roles %}
+vault write {{ item.path }}/roles/{{ role.name }} \
+	db_name={{ item.name }} \
+	creation_statements="{{ role.creation_statements | regex_replace('\"','\\"') }}" \
+{% if role.renew_statements is defined %}
+	renew_statements="{{ role.renew_statements | regex_replace('\"','\\"') }}" \
+{% endif %}
+{% if role.revocation_statements is defined %}
+	revocation_statements="{{ role.revocation_statements | regex_replace('\"','\\"') }}" \
+{% endif %}
+{% if role.rollback_statements is defined %}
+	rollback_statements="{{ role.rollback_statements | regex_replace('\"','\\"') }}" \
+{% endif %}
+	default_ttl="{{ role.default_ttl }}" \
+	max_ttl="{{ role.max_ttl }}" \
+	|| exit 1
+{% endfor %}
+
 {% endfor %}

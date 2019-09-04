@@ -26,9 +26,11 @@
 - name: Consul monitoring
   when:
     - configure_consul_vault_ui | lower == 'true'
-  template: src=service.consul.json.j2 dest={{ vault_consul_services_path }}/{{ item.service.name }}.json
   with_items: "{{ vault_vault_ui }}"
   notify: reload consul
+  template:
+      src: service.consul.json.j2
+      dest: "{{ vault_consul_services_path }}/{{ item.service.name }}.json"
 
 # TODO: [WARN]  no `api_addr` value specified in config or in VAULT_API_ADDR; falling back to detection if possible, but this value should be manually set
 # TODO: [INFO]  core: seal configuration missing, not initialized
@@ -37,14 +39,23 @@
 - name: Flush handlers before post configuration
   meta: flush_handlers
 
+- name: Ensure vault is running
+  service: name=vault state=started
+
 - name: Vault post configuration
   run_once: true
   block:
     - name: Init vault
-      shell: consul lock vault_init vault operator init -key-shares=3 -key-threshold=2 -format=json
       register: vault_init_result
       environment:
         VAULT_ADDR: "{{ vault_addr }}"
+        CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
+      shell: >
+          consul lock vault_init \
+              vault operator init \
+                  -key-shares=3 \
+                  -key-threshold=2 \
+                  -format=json
 
     - name: Continue if vault is not initialized
       when: vault_init_result.stderr_lines | length == 0
@@ -59,56 +70,33 @@
           with_items: "{{ vault_init.unseal_keys_hex }}"
           environment:
             VAULT_ADDR: "{{ vault_addr }}"
+            CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
+        
+        - name: Set root token
+          set_fact: vault_root_token="{{ vault_init.root_token }}"
+            
+    - name: Get already created token
+      when: vault_init_result.stderr_lines | length > 0
+      set_fact:
+          vault_root_token: "{{ lookup('file', '{{ansible_env.HOME}}/.vault.env') | regex_replace('^VAULT_TOKEN=','')}}"
 
-        # Auth configuration
-        # TODO: write a generic key,value loop
-        - name: Enable LDAP auth engine
-          when: vault_auth_ldap | length > 0
-          with_items: "{{ vault_auth_ldap }}"
-          environment:
-            VAULT_TOKEN: "{{ vault_init.root_token }}"
-            VAULT_ADDR: "{{ vault_addr }}"
-          shell: >
-              vault auth enable \
-                  -path={{ item.name }} \
-                  {% if item.description is defined %}
-                  -description="{{ item.description }}" \
-                  {% endif %}
-                  ldap
+    - name: Get vault status
+      shell: vault status
+      register: vault_status
+      environment:
+        VAULT_TOKEN: "{{ vault_root_token }}"
+        VAULT_ADDR: "{{ vault_addr }}"
 
-        - name: Configure LDAP auth engine
-          when: vault_auth_ldap | length > 0
-          with_items: "{{ vault_auth_ldap }}"
-          environment:
-            VAULT_TOKEN: "{{ vault_init.root_token }}"
-            VAULT_ADDR: "{{ vault_addr }}"
-          shell: >
-              consul lock vault_auth_config \
-                  vault write auth/{{ item.name }}/config \
-                      url="{{ item.url }}" \
-                      binddn="{{ item.binddn }}" \
-                      {% if item.bindpass is defined and item.bindpass | length > 0 %}
-                      bindpass="{{ item.bindpass }}" \
-                      {% endif %}
-                      userdn="{{ item.userdn }}" \
-                      userattr="{{ item.userattr }}" \
-                      {% if item.groupfilter is defined and item.groupfilter | length > 0 %}
-                      groupfilter="{{ item.groupfilter }}" \
-                      groupdn="{{ item.groupdn }}" \
-                      groupattr="{{ item.groupattr }}"
-                      {% endif %}
+    - name: Configure vault
+      when:
+        - vault_status.stderr_lines | length == 0
+        - vault_status.stdout_lines[12] | regex_search(' active$') != None
+      block:
+        - name: Auth engines configuration
+          import_tasks: vault_post_install_auth_engines.yml
 
-        - name: Configure database secret engine
-          when: vault_secrets_engine_databases | length > 0
-          block:
-              - name: Create script
-                template: src=vault_database_engine.sh.j2 dest=/dev/shm/vault_database_engine.sh
-
-              - name: Run script
-                shell: VAULT_TOKEN={{ vault_token }} VAULT_ADDR={{ vault_addr }} lock vault_database_engine sh /dev/shm/vault_database_engine.sh
-
-              - name: Cleanup script
-                file: path=/dev/shm/vault_database_engine.sh state=absent
+        - name: Secrets engines configuration
+          import_tasks: vault_post_install_secrets_engines.yml
 
         # TODO: set a local fact in pre_install to manage this
         - name: Create an env file containing the token
@@ -124,9 +112,9 @@
               lineinfile:
                 path: "{{ lookup('env', 'HOME') }}/.vault.env"
                 state: present
-                regexp: "^$"
-                line: "VAULT_TOKEN={{ vault_init.root_token }}"
+                regexp: "^(VAULT_TOKEN=.+){0,1}$"
+                line: "VAULT_TOKEN={{ vault_root_token }}"
 
             - name: Store the bootstrap token into consul
               when: vault_token_store_consul_kv | lower == 'true'
-              command: consul kv put vault/root_token {{ vault_init.root_token }}
+              command: consul kv put vault/root_token {{ vault_root_token }}

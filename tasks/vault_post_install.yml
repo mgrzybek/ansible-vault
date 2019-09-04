@@ -81,7 +81,7 @@
           register: vault_env_result
 
         - name: Get root token from file
-          when: vault_env_result.stat.exists is true
+          when: vault_env_result.stat.exists | lower == 'true'
           set_fact:
               vault_root_token: "{{ lookup('file', '{{ vault_env_root_path }}/.vault.env') | regex_replace('^VAULT_TOKEN=','')}}"
 

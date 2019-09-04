@@ -63,8 +63,6 @@
         - name: Set init facts
           set_fact: vault_init="{{ vault_init_result.stdout | from_json }}"
 
-        - debug: msg="{{ vault_init.unseal_keys_hex }}"
-
         - name: Unseal vault
           shell: consul lock vault_init vault operator unseal {{ item }}
           with_items: "{{ vault_init.unseal_keys_hex }}"

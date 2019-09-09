@@ -89,20 +89,23 @@
                   vault_root_token: "{{ lookup('file', '{{ vault_env_root_path }}/.vault.env') | regex_replace('^VAULT_TOKEN=','')}}"
 
             - name: Get root token from consul kv
-              until: consul_kv_root_token.stdout | length > 0
-              retries: 10
-              delay: 30
-              when:
-                - vault_env_result.stat.exists | lower == 'false'
-                - vault_token_store_consul_kv | lower == 'true'
-              register: consul_kv_root_token
-              shell: consul kv get vault/root_token
-              environment:
-                CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
+              when: vault_env_result.stat.exists | lower == 'false'
+              block:
+                - name: Get root token from consul kv
+                  until: consul_kv_root_token.stdout | length > 0
+                  retries: 10
+                  delay: 30
+                  when:
+                    - vault_env_result.stat.exists | lower == 'false'
+                    - vault_token_store_consul_kv | lower == 'true'
+                  register: consul_kv_root_token
+                  shell: consul kv get vault/root_token
+                  environment:
+                    CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
 
-            - name: Set local fact
-              set_fact:
-                vault_root_token: "{{ consul_kv_root_token.stdout }}"
+                - name: Set local fact
+                  set_fact:
+                    vault_root_token: "{{ consul_kv_root_token.stdout }}"
 
         - name: Get the keys to unseal the vault
           when:

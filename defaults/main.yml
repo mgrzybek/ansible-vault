@@ -15,8 +15,6 @@ vault_server_mode: false
 vault_vault_bootstrap_expect:
 vault_vault_cluster:
 
-vault_bind_address: "{{ ansible_default_ipv4.address }}"
-
 vault_advertise_wan:
 
 vault_config_telegraf: false
@@ -75,3 +73,8 @@ vault_policies: []
 #          max_wrapping_ttl:
 #          allowed_parameters: {}
 #          denied_parameters: {}
+
+vault_role_tokens: []
+#vault_role_tokens:
+#    - role:
+#      strategy:

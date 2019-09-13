@@ -28,3 +28,9 @@
   run_once: true
   tags:
     - vault-post-install
+
+- include_tasks: vault_post_install_role_token.yml
+  with_items: "{{ vault_role_tokens }}"
+  run_once: true
+  tags:
+    - vault-post-install

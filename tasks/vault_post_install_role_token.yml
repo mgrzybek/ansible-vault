@@ -1,0 +1,40 @@
+---
+
+- name: Generate token file
+  template:
+    src: token.json.j2
+    dest: /dev/shm/token.json
+  vars:
+    data: "{{ item.strategy }}"
+
+- name: Generate the token
+  environment:
+    VAULT_TOKEN: "{{ vault_root_token }}"
+    VAULT_ADDR: "{{ vault_addr }}"
+  shell: >
+        vault write /auth/token/roles/{{ item.role }} @/dev/shm/token.json
+
+- name: Cleanup
+  file: path=/dev/shm/token.json state=absent
+
+- name: Generate the token
+  register: result_token
+  environment:
+    VAULT_TOKEN: "{{ vault_root_token }}"
+    VAULT_ADDR: "{{ vault_addr }}"
+  shell: >
+        vault token create \
+            -policy {{ item.role }} \
+            -period 72h \
+            {% if item.strategy.orphan | lower == 'true' %}
+            -orphan \
+            {% endif %}
+            -format=json
+
+- name: Set local fact
+  set_fact: token="{{ result_token.stdout | from_json }}"
+
+- name: Push token to consul kv
+  shell: consul kv put nomad/token_{{ item.role }} "{{ token.auth.client_token }}"
+  environment:
+    CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"     

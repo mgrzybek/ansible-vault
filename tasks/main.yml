@@ -23,14 +23,18 @@
   tags:
     - vault-post-install
 
-- include_tasks: vault_post_install_policy.yml
-  with_items: "{{ vault_policies }}"
+- name: Vault post-install
+  when: 
+    - vault_root_token is defined # We have the root token
+    - vault_status.stderr_lines | length == 0 # No error from vault status
+    - vault_status.stdout_lines[4] | regex_search('false$') != None # sealed is false
+    - vault_status.stdout_lines[12] | regex_search(' active$') != None # HA Mode is active
   run_once: true
   tags:
     - vault-post-install
+  block:
+    - include_tasks: vault_post_install_policy.yml
+      with_items: "{{ vault_policies }}"
 
-- include_tasks: vault_post_install_role_token.yml
-  with_items: "{{ vault_role_tokens }}"
-  run_once: true
-  tags:
-    - vault-post-install
+    - include_tasks: vault_post_install_role_token.yml
+      with_items: "{{ vault_role_tokens }}"

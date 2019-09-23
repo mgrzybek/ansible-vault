@@ -1,0 +1,6 @@
+---
+
+- name: Store the bootstrap token into consul
+  shell: consul kv put {{ path }} {{ value }}
+  environment:
+    CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"

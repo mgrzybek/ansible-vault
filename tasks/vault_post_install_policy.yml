@@ -7,7 +7,7 @@
 
 - name: Configure policies
   environment:
-    VAULT_TOKEN: "{{ vault_init.root_token }}"
+    VAULT_TOKEN: "{{ vault_root_token }}"
     VAULT_ADDR: "{{ vault_addr }}"
   shell: >
     vault policy write {{ item.name }} /tmp/policy.hcl

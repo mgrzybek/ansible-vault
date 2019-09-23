@@ -167,13 +167,22 @@
 
         - name: Store the bootstrap token into consul
           when: vault_token_store_consul_kv | lower == 'true'
-          shell: consul kv put vault/root_token {{ vault_root_token }}
-          environment:
-            CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
+          import_tasks: vault_post_install_store_consul.yml
+          vars:
+            path: "vault/root_token"
+            value: "{{ vault_root_token }}"
 
         - name: Store vault keys into consul
           when: vault_keys_store_consul_kv | lower == 'true'
-          shell: consul kv put vault/keys "{{ vault_init.unseal_keys_hex }}"
-          environment:
-            CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
+          import_tasks: vault_post_install_store_consul.yml
+          vars:
+            path: "vault/keys"
+            value: "{{ vault_init.unseal_keys_hex }}"
+
+        - name: Store the bootstrap token into swift
+          when: vault_token_store_swift | lower == 'true'
+          shell: echo {{ vault_root_token }} | swift upload --object-name=token vault -
               
+        - name: Store vault keys into swift
+          when: vault_keys_store_swift | lower == 'true'
+          shell: echo {{ vault_init.unseal_keys_hex }} | swift upload --object-name=keys vault -

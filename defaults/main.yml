@@ -46,6 +46,8 @@ vault_token_store_swift: false
 vault_keys_store_consul_kv: false
 vault_keys_store_swift: false
 
+vault_swift_container: vault
+
 vault_secrets_engine_databases: []
 vault_secrets_engine_consul: []
 #vault_secrets_engine_consul:

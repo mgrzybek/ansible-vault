@@ -27,6 +27,7 @@
         name: vault
         shell: /bin/false
         group: vault
+        home: /var/lib/vault
 
     - name: Get vault archive ({{ last_version.stdout }})
       get_url:

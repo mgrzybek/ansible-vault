@@ -1,0 +1,37 @@
+---
+ 
+- name: Post install - Get keys from consul kv
+  when: vault_keys_store_consul_kv | lower == 'true'
+  block:
+    - name: Post install - Get keys from consul kv
+      until: consul_kv_keys.stdout | length > 0
+      retries: 10
+      delay: 30
+      register: consul_kv_keys
+      shell: consul kv get vault/keys
+      environment:
+        CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
+
+    - name: Post install - Set vault_keys fact
+      set_fact:
+        vault_keys: "{{ consul_kv_keys.stdout }}"
+
+- name: Post install - Get root keys from swift
+  when: vault_keys_store_swift | lower == 'true'
+  block:
+    - name: Post install - Get root keys from swift
+      until: swift_keys.stdout | length > 0
+      retries: 10
+      delay: 30
+      register: swift_keys
+      shell: swift download {{ vault_swift_container }} keys -
+      environment:
+        OS_USERNAME: "{{ lookup('env', 'OS_USERNAME') }}"
+        OS_PASSWORD: "{{ lookup('env', 'OS_PASSWORD') }}"
+        OS_AUTH_URL: "{{ lookup('env', 'OS_AUTH_URL') }}"
+        OS_PROJECT_ID: "{{ lookup('env', 'OS_PROJECT_ID') }}"
+        OS_USER_DOMAIN_NAME: "{{ lookup('env', 'OS_USER_DOMAIN_NAME') }}"
+
+    - name: Post install - Set vault_keys fact
+      set_fact:
+        vault_keys: "{{ swift_keys.stdout }}"

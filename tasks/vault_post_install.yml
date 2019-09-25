@@ -52,7 +52,9 @@
         VAULT_ADDR: "{{ vault_addr }}"
         CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
       shell: >
+          {% if hostvars | length > 0 %}
           consul lock vault_init \
+          {% endif %}
               vault operator init \
                   -key-shares=3 \
                   -key-threshold=2 \
@@ -78,53 +80,16 @@
       when: vault_init_result.stderr_lines | length > 0
       block:
         - name: Get root token
-          block:
-            - name: Check file
-              stat: path="{{ vault_env_root_path }}/.vault.env"
-              register: vault_env_result
+          import_tasks: vault_post_install_get_token.yml
 
-            - name: Get root token from file
-              when: vault_env_result.stat.exists | lower == 'true'
-              set_fact:
-                  vault_root_token: "{{ lookup('file', '{{ vault_env_root_path }}/.vault.env') | regex_replace('^VAULT_TOKEN=','')}}"
+        - name: Get keys
+          import_tasks: vault_post_install_get_keys.yml
 
-            - name: Get root token from consul kv
-              when: vault_env_result.stat.exists | lower == 'false'
-              block:
-                - name: Get root token from consul kv
-                  until: consul_kv_root_token.stdout | length > 0
-                  retries: 10
-                  delay: 30
-                  when:
-                    - vault_env_result.stat.exists | lower == 'false'
-                    - vault_token_store_consul_kv | lower == 'true'
-                  register: consul_kv_root_token
-                  shell: consul kv get vault/root_token
-                  environment:
-                    CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
-
-                - name: Set local fact
-                  set_fact:
-                    vault_root_token: "{{ consul_kv_root_token.stdout }}"
-
-        - name: Get the keys to unseal the vault
-          when:
-            - vault_keys_store_consul_kv | lower == 'true'
-          block:
-            - name: Get the keys from consul kv
-              until: consul_kv_keys.stdout | length > 0
-              retries: 10
-              delay: 30
-              register: consul_kv_keys
-              shell: consul kv get vault/keys
-              environment:
-                 CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"     
-
-            - name: Unseal vault
-              shell: vault operator unseal {{ item }}
-              with_items: "{{ consul_kv_keys.stdout }}"
-              environment:
-                VAULT_ADDR: "{{ vault_addr }}"
+        - name: Unseal vault
+          shell: vault operator unseal {{ item }}
+          with_items: "{{ vault_.stdout }}"
+          environment:
+            VAULT_ADDR: "{{ vault_addr }}"
 
     - name: Get vault status
       when: vault_root_token is defined

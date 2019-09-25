@@ -87,7 +87,7 @@
 
         - name: Unseal vault
           shell: vault operator unseal {{ item }}
-          with_items: "{{ vault_.stdout }}"
+          with_items: "{{ vault_keys }}"
           environment:
             VAULT_ADDR: "{{ vault_addr }}"
 

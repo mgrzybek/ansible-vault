@@ -50,7 +50,7 @@ vault write {{ item.path }}/config/{{ item.name }} \
 	connection_url="{{ '{{' }}username}}:{{ '{{' }}password}}@tcp({{ item.host }}:{{ item.port }}){% if item.connection_options | length > 0 %}/?{{ item.connection_options | join('&') }}{% endif %}" \
 {% endif %}
 {% if item.plugin_name == "postgresql-database-plugin" %}
-	connection_url="postgresql://{{ '{{' }}username}}:{{ '{{' }}password}}@{{ item.host }}:{{ item.port }}{% if item.connection_options | length > 0 %}/?{{ item.connection_options | join('&') }}{% endif %}" \
+	connection_url="postgresql://{{ '{{' }}username}}:{{ '{{' }}password}}@{{ item.host }}:{{ item.port }}/{{ item.database }}{% if item.connection_options | length > 0 %}?{{ item.connection_options | join('&') }}{% endif %}" \
 {% endif %}
 {% if item.plugin_name == "oracle-database-plugin" %}
 	connection_url="{{ item.connection_url }}" \

@@ -18,7 +18,9 @@ vault write sys/plugins/catalog/database/oracle-database-plugin \
 
 vault write {{ item.path }}/config/{{ item.name }} \
 	plugin_name="{{ item.plugin_name }}" \
+{% if item.verify_connection is defined %}
 	verify_connection={{ item.verify_connection | lower }} \
+{% endif %}
 	allowed_roles={{ item | json_query('allowed_roles[*].name') | join(',') }} \
 	username={{ item.username }} \
 	password={{ item.password }} \

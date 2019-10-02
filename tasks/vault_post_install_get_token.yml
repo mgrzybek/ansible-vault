@@ -36,7 +36,7 @@
       retries: 10
       delay: 30
       register: swift_root_token
-      shell: swift download {{ vault_swift_container }} root_token -
+      shell: swift download --output - {{ vault_swift_container }} root_token
       environment:
         OS_USERNAME: "{{ lookup('env', 'OS_USERNAME') }}"
         OS_PASSWORD: "{{ lookup('env', 'OS_PASSWORD') }}"

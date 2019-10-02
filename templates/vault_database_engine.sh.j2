@@ -36,7 +36,7 @@ vault write {{ item.path }}/config/{{ item.name }} \
 	client_key={{ item.client_key }} \
 {% endif %}
 {% if item.plugin_name == "influxdb-database-plugin" %}
-	connection_url="influxdb://{{ '{{' }}username}}:{{ '{{' }}password}}@{{ item.host }}:{{ item.port }}{% if item.connection_options | length > 0 %}/?{{ item.connection_options | join('&') }}{% endif %}" \
+	connection_url="influxdb://{{ '{{' }}username}}:{{ '{{' }}password}}@{{ item.host }}:{{ item.port }}{% if item.connection_options is defined and item.connection_options | length > 0 %}/?{{ item.connection_options | join('&') }}{% endif %}" \
 	host={{ item.host }} \
 {% endif %}
 {% if item.plugin_name == "hanadb-database-plugin" %}

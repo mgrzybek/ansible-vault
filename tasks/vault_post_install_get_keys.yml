@@ -34,4 +34,4 @@
 
     - name: Post install - Set vault_keys fact
       set_fact:
-        vault_keys: "{{ swift_keys.stdout }}"
+        vault_keys: "{{ swift_keys.stdout | regex_replace('\w+', '"\\1"') }}"

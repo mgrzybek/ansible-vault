@@ -24,7 +24,9 @@
       retries: 10
       delay: 30
       register: swift_keys
-      shell: swift download --output - {{ vault_swift_container }} keys
+      shell: >
+          swift download --output - {{ vault_swift_container }} keys \
+          | perl -pe 's/(\w+)/"$1"/g'
       environment:
         OS_USERNAME: "{{ lookup('env', 'OS_USERNAME') }}"
         OS_PASSWORD: "{{ lookup('env', 'OS_PASSWORD') }}"

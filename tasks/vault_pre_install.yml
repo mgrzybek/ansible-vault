@@ -1,6 +1,7 @@
 ---
 
-- fail: msg="Openstack credencials must be present"
+- name: Check Openstack credentials
+  fail: msg="Openstack credencials must be present"
   when: (lookup('env', 'OS_USERNAME') is undefined
     or lookup('env', 'OS_PASSWORD') is undefined
     or lookup('env', 'OS_AUTH_URL') is undefined
@@ -8,7 +9,19 @@
     or lookup('env', 'OS_USER_DOMAIN_NAME') is undefined)
     and (vault_token_store_swift | lower == 'true'
     or vault_keys_store_swift | lower == 'true')
+
+- name: Check token storage
+  fail: msg="vault_token_store_consul_kv and vault_token_store_swift are exclusive"
+  when:
+    - vault_token_store_consul_kv | lower == 'true'
+    - vault_token_store_swift | lower == 'true'
  
+- name: Check keys storage
+  fail: msg="vault_keys_store_consul_kv and vault_keys_store_swift are exclusive"
+  when:
+    - vault_keys_store_consul_kv | lower == 'true'
+    - vault_keys_store_swift | lower == 'true'
+
 - name: Check firewalld
   shell: systemctl is-active firewalld.service 2>/dev/null || echo ko && exit 0
   register: firewalld_service

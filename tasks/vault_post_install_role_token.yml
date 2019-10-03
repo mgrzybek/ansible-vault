@@ -35,6 +35,15 @@
   set_fact: token="{{ result_token.stdout | from_json }}"
 
 - name: Push token to consul kv
+  when:
+    - vault_keys_store_consul_kv | lower == 'true'
   shell: consul kv put nomad/token_{{ item.role }} "{{ token.auth.client_token }}"
   environment:
-    CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"     
+    CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
+
+- name: Push token to swift
+  when:
+    - vault_keys_store_swift | lower == 'true'
+  shell: echo "{{ token.auth.client_token }}" | swift upload --object-name=token_{{ item.role }} nomad
+  environment:
+    CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"

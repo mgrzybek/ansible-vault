@@ -44,6 +44,6 @@
 - name: Push token to swift
   when:
     - vault_keys_store_swift | lower == 'true'
-  shell: echo "{{ token.auth.client_token }}" | swift upload --object-name=token_{{ item.role }} nomad -
+  shell: echo {{ token.auth.client_token }} | swift upload --object-name=token_{{ item.role }} nomad -
   environment:
     CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"

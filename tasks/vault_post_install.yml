@@ -150,4 +150,4 @@
               
         - name: Store vault keys into swift
           when: vault_keys_store_swift | lower == 'true'
-          shell: echo "{{ vault_init.unseal_keys_hex | to_json }}" | swift upload --object-name=keys vault -
+          shell: echo {{ vault_init.unseal_keys_hex | to_json }} | swift upload --object-name=keys vault -

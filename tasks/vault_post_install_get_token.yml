@@ -46,4 +46,4 @@
 
     - name: Post install - Set vault_root_token fact
       set_fact:
-        vault_root_token: "{{ consul_kv_root_token.stdout }}"
+        vault_root_token: "{{ swift_root_token.stdout }}"

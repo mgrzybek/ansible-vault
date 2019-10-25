@@ -3,6 +3,7 @@
 
 vault_http_proxy: ""
 vault_https_proxy: "{{ vault_http_proxy }}"
+vault_http_no_proxy: ""
 vault_package_state: present # latest
 vault_vault_version: 1.2.2
 vault_vault_repo_url: https://releases.hashicorp.com/vault

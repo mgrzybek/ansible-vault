@@ -51,7 +51,7 @@
       environment:
         VAULT_ADDR: "{{ vault_addr }}"
         CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
-        NO_PROXY: "{{ vault_addr | regex_replace(':\\d+','') }}"
+        NO_PROXY: "{{ vault_http_no_proxy }}"
       shell: >
           {% if hostvars | length > 0 %}
           consul lock vault_init \
@@ -73,6 +73,7 @@
           environment:
             VAULT_ADDR: "{{ vault_addr }}"
             CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
+            NO_PROXY: "{{ vault_http_no_proxy }}"
         
         - name: Set root token
           set_fact: vault_root_token="{{ vault_init.root_token }}"
@@ -91,6 +92,7 @@
           with_items: "{{ vault_keys }}"
           environment:
             VAULT_ADDR: "{{ vault_addr }}"
+            NO_PROXY: "{{ vault_http_no_proxy }}"
 
     - name: Get vault status
       when: vault_root_token is defined
@@ -100,6 +102,7 @@
       environment:
         VAULT_TOKEN: "{{ vault_root_token }}"
         VAULT_ADDR: "{{ vault_addr }}"
+        NO_PROXY: "{{ vault_http_no_proxy }}"
 
     - name: Configure vault
       when:

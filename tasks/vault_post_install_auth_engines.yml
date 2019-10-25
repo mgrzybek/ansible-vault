@@ -1,7 +1,9 @@
 --- 
 
 - name: Enable LDAP auth engine
-  when: vault_auth_ldap | length > 0
+  when:
+    - vault_auth_ldap is defined
+    - vault_auth_ldap | length > 0
   block:
     - name: Enable LDAP auth engine
       with_items: "{{ vault_auth_ldap }}"

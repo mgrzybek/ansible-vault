@@ -51,6 +51,7 @@
       environment:
         VAULT_ADDR: "{{ vault_addr }}"
         CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
+        NO_PROXY: "{{ vault_addr | regex_replace(':\\d+','') }}"
       shell: >
           {% if hostvars | length > 0 %}
           consul lock vault_init \

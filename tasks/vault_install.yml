@@ -15,20 +15,20 @@
     - install-yum
     - install-zypper
 
+- name: Vault group
+  group:
+    name: vault
+
+- name: Vault user
+  user:
+    name: vault
+    shell: /bin/false
+    group: vault
+    home: /var/lib/vault
+
 - name: Install vault
   when: install_vault == true
   block:
-    - name: Vault group
-      group:
-        name: vault
-
-    - name: Vault user
-      user:
-        name: vault
-        shell: /bin/false
-        group: vault
-        home: /var/lib/vault
-
     - name: Get vault archive ({{ last_version.stdout }})
       register: get_binary
       until: get_binary is success

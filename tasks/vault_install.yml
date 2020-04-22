@@ -30,6 +30,10 @@
         home: /var/lib/vault
 
     - name: Get vault archive ({{ last_version.stdout }})
+      register: get_binary
+      until: get_binary is success
+      retries: 5
+      delay: 10
       get_url:
         url: "{{ vault_vault_repo_url }}/{{ version_to_install }}/vault_{{ version_to_install }}_linux_amd64.zip"
         dest: "/tmp/vault_bin.zip"

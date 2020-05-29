@@ -37,12 +37,15 @@
 # TODO: https://shapeshed.com/hashicorp-vault-ldap/
 
 - name: Flush handlers before post configuration
+  when: vault_server_mode | lower == 'true'
   meta: flush_handlers
 
 - name: Ensure vault is running
+  when: vault_server_mode | lower == 'true'
   service: name=vault state=started
 
 - name: Vault post configuration
+  when: vault_server_mode | lower == 'true'
   run_once: true
   block:
     - name: Init vault

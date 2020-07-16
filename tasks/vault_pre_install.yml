@@ -1,6 +1,6 @@
 ---
 
-- name: Pre-Install | | Check Openstack credentials
+- name: Pre-Install | Check Openstack credentials
   fail: msg="Openstack credencials must be present"
   when: (lookup('env', 'OS_USERNAME') is undefined
     or lookup('env', 'OS_PASSWORD') is undefined
@@ -10,60 +10,60 @@
     and (vault_token_store_swift | lower == 'true'
     or vault_keys_store_swift | lower == 'true')
 
-- name: Pre-Install | | Check token storage
+- name: Pre-Install | Check token storage
   fail: msg="vault_token_store_consul_kv and vault_token_store_swift are exclusive"
   when:
     - vault_token_store_consul_kv | lower == 'true'
     - vault_token_store_swift | lower == 'true'
  
-- name: Pre-Install | | Check keys storage
+- name: Pre-Install | Check keys storage
   fail: msg="vault_keys_store_consul_kv and vault_keys_store_swift are exclusive"
   when:
     - vault_keys_store_consul_kv | lower == 'true'
     - vault_keys_store_swift | lower == 'true'
 
-- name: Pre-Install | | Check firewalld
+- name: Pre-Install | Check firewalld
   shell: systemctl is-active firewalld.service 2>/dev/null || echo ko && exit 0
   register: firewalld_service
 
-- name: Pre-Install | | Set local facts
+- name: Pre-Install | Set local facts
   set_fact:
     use_firewalld: false
     install_vault: false
     configure_consul_vault_ui: false
     vault_addr: "http{% if vault_tls_disable != 1 %}s{% endif %}://{{ vault_tcp_listener }}"
 
-- name: Pre-Install | | Set local facts (home)
+- name: Pre-Install | Set local facts (home)
   when: ansible_env.HOME is undefined
   set_fact:
     vault_env_root_path: /root
 
-- name: Pre-Install | | Set local facts (home)
+- name: Pre-Install | Set local facts (home)
   when: ansible_env.HOME is defined
   set_fact:
     vault_env_root_path: "{{ ansible_env.HOME }}"
 
-- name: Pre-Install | | Set firewall facts
+- name: Pre-Install | Set firewall facts
   when: firewalld_service.stdout.find('active') > -1
   set_fact:
     use_firewalld: true
 
-- name: Pre-Install | | Check if consul is running
+- name: Pre-Install | Check if consul is running
   shell: systemctl is-active consul 2>/dev/null || echo ko && exit 0
   register: consul_service
 
-- name: Pre-Install | | Check de la presence actuelle de vault
+- name: Pre-Install | Check de la presence actuelle de vault
   stat: path={{ vault_install_prefix }}/vault get_checksum=no
   register: vault_bin_stats
 
-- name: Pre-Install | | Check de la version de vault
+- name: Pre-Install | Check de la version de vault
   when: vault_bin_stats.stat.exists
   shell: >
     "{{ vault_install_prefix }}"/vault --version \
     | awk -Fv '/^Vault/ {print $2}'
   register: vault_bin_version
 
-- name: Pre-Install | | Set vault version
+- name: Pre-Install | Set vault version
   when:
     - vault_package_state == 'present'
     - vault_bin_version.stdout | default('') != vault_vault_version or not vault_bin_version is defined
@@ -71,10 +71,10 @@
     version_to_install: "{{ vault_vault_version }}"
     install_vault: true
 
-- name: Pre-Install | | Last version
+- name: Pre-Install | Last version
   when: vault_package_state == 'latest'
   block:
-    - name: Pre-Install | | Recuperation de la derniere version en ligne
+    - name: Pre-Install | Recuperation de la derniere version en ligne
       register: last_version
       shell: >
         warn=False \
@@ -85,31 +85,31 @@
             | grep -v rc | grep -v beta | \
             | head -n 1 | awk -F/ '{print $3}'
 
-    - name: Pre-Install | | Test version
+    - name: Pre-Install | Test version
       when: last_version.stdout == "" 
       fail: msg="Cannot get last version"
 
-    - name: Pre-Install | | Set installation facts
+    - name: Pre-Install | Set installation facts
       when: vault_bin_version.stdout | default('') != last_version.stdout or not vault_bin_version is defined
       set_fact:
         version_to_install: "{{ last_version.stdout }}"
         install_vault: true
 
-#- name: Pre-Install | | Check telegraf
+#- name: Pre-Install | Check telegraf
 #  shell: systemctl is-active telegraf 2>/dev/null || echo ko && exit 0
 #  register: telegraf_service
 
-- name: Pre-Install | | Create consul_bin variable
+- name: Pre-Install | Create consul_bin variable
   when:
     - vault_enable_ui | lower == 'true'
     - consul_service.stdout.find('ko') < 0
   block:
-    - name: Pre-Install | | Récupération du path de la commande consul
+    - name: Pre-Install | Récupération du path de la commande consul
       shell: systemctl show -p ExecStart consul|tr ' ' '\n'|awk -F= '/path=/ {print $2}'
       register: consul_bin_path
 
-    - name: Pre-Install | | Set consul bin path
+    - name: Pre-Install | Set consul bin path
       set_fact: consul_bin="{{ consul_bin_path.stdout }}"
 
-    - name: Pre-Install | | Activate nomad ui as a consul service
+    - name: Pre-Install | Activate nomad ui as a consul service
       set_fact: configure_consul_vault_ui=true

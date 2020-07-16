@@ -1,6 +1,6 @@
 ---
 
-- name: Install | | Install vault packages
+- name: Install | Install vault packages
   package:
     name: "{{ vault_distro_packages }}"
     state: "{{ vault_package_state }}"
@@ -15,21 +15,21 @@
     - install-yum
     - install-zypper
 
-- name: Install | | Vault group
+- name: Install | Vault group
   group:
     name: vault
 
-- name: Install | | Vault user
+- name: Install | Vault user
   user:
     name: vault
     shell: /bin/false
     group: vault
     home: /var/lib/vault
 
-- name: Install | | Install vault
+- name: Install | Install vault
   when: install_vault == true
   block:
-    - name: Install | | Get vault archive ({{ last_version.stdout }})
+    - name: Install | Get vault archive ({{ last_version.stdout }})
       register: get_binary
       until: get_binary is success
       retries: 5
@@ -42,18 +42,18 @@
         http_proxy: "{{ vault_http_proxy }}"
         https_proxy: "{{ vault_https_proxy }}"
 
-    - name: Install | | Install binary
+    - name: Install | Install binary
       unarchive: src="/tmp/vault_bin.zip" dest=/usr/local/bin/ mode=0755 copy=no
       notify: restart vault
 
-    - name: Install | | Cleanup
+    - name: Install | Cleanup
       file: path="/tmp/vault_bin.zip" state=absent
 
-- name: Install | | Create directories
+- name: Install | Create directories
   file: path={{ item }} state=directory
   with_items:
     - /etc/vault.d
 
-- name: Install | | Systemd service
+- name: Install | Systemd service
   template: src=vault.service.j2 dest=/etc/systemd/system/vault.service
   notify: reload systemd

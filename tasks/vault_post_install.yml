@@ -1,29 +1,29 @@
 ---
 
-- name: Kernel capabilities
+- name: Post-Install | | Kernel capabilities
   when:
     - install_vault | lower == 'true'
   command: setcap cap_ipc_lock=+ep /usr/local/bin/vault
 
-- name: Sysconfig
+- name: Post-Install | | Sysconfig
   template: src=vault.sysconfig.j2 dest={{ vault_sysconfig }}
   notify: restart vault
 
-- name: Vault main configuration file
+- name: Post-Install | | Vault main configuration file
   template: src=vault.hcl.j2 dest=/etc/vault.d/vault.hcl
   notify: restart vault
 
-#- name: Telegraf configuration
+#- name: Post-Install | | Telegraf configuration
 #  template: src=vault.telegraf.conf.j2 dest=/etc/telegraf/telegraf.d/vault.conf
 #  notify: restart telegraf
 #  when: vault_config_telegraf == true
 
-#- name: Auto-complétion
+#- name: Post-Install | | Auto-complétion
 #  become: no
 #  command: vault -autocomplete-install
 #  register: vault_autocomplete
 
-- name: Consul monitoring
+- name: Post-Install | | Consul monitoring
   when:
     - configure_consul_vault_ui | lower == 'true'
   with_items: "{{ vault_vault_ui }}"
@@ -36,19 +36,19 @@
 # TODO: [INFO]  core: seal configuration missing, not initialized
 # TODO: https://shapeshed.com/hashicorp-vault-ldap/
 
-- name: Flush handlers before post configuration
+- name: Post-Install | | Flush handlers before post configuration
   when: vault_server_mode | lower == 'true'
   meta: flush_handlers
 
-- name: Ensure vault is running
+- name: Post-Install | | Ensure vault is running
   when: vault_server_mode | lower == 'true'
   service: name=vault state=started
 
-- name: Vault post configuration
+- name: Post-Install | | Vault post configuration
   when: vault_server_mode | lower == 'true'
   run_once: true
   block:
-    - name: Init vault
+    - name: Post-Install | | Init vault
       register: vault_init_result
       ignore_errors: yes
       environment:
@@ -64,13 +64,13 @@
                   -key-threshold=2 \
                   -format=json
 
-    - name: Continue if vault is not initialized
+    - name: Post-Install | | Continue if vault is not initialized
       when: vault_init_result.stderr_lines | length == 0
       block:
-        - name: Set init facts
+        - name: Post-Install | | Set init facts
           set_fact: vault_init="{{ vault_init_result.stdout | from_json }}"
 
-        - name: Unseal vault
+        - name: Post-Install | | Unseal vault
           shell: vault operator unseal {{ item }}
           with_items: "{{ vault_init.unseal_keys_hex }}"
           environment:
@@ -78,26 +78,26 @@
             CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
             NO_PROXY: "{{ vault_http_no_proxy }}"
         
-        - name: Set root token
+        - name: Post-Install | | Set root token
           set_fact: vault_root_token="{{ vault_init.root_token }}"
             
-    - name: Continue if vault has already been initialized
+    - name: Post-Install | | Continue if vault has already been initialized
       when: vault_init_result.stderr_lines | length > 0
       block:
-        - name: Get root token
+        - name: Post-Install | | Get root token
           import_tasks: vault_post_install_get_token.yml
 
-        - name: Get keys
+        - name: Post-Install | | Get keys
           import_tasks: vault_post_install_get_keys.yml
 
-        - name: Unseal vault
+        - name: Post-Install | | Unseal vault
           shell: vault operator unseal {{ item }}
           with_items: "{{ vault_keys }}"
           environment:
             VAULT_ADDR: "{{ vault_addr }}"
             NO_PROXY: "{{ vault_http_no_proxy }}"
 
-    - name: Get vault status
+    - name: Post-Install | | Get vault status
       when: vault_root_token is defined
       shell: vault status
       register: vault_status
@@ -107,54 +107,54 @@
         VAULT_ADDR: "{{ vault_addr }}"
         NO_PROXY: "{{ vault_http_no_proxy }}"
 
-    - name: Configure vault
+    - name: Post-Install | | Configure vault
       when:
         - vault_root_token is defined # We have the root token
         - vault_status.stderr_lines | length == 0 # No error from vault status
         - vault_status.stdout_lines[4] | regex_search('false$') != None # sealed is false
         - vault_status.stdout_lines[12] | regex_search(' active$') != None # HA Mode is active
       block:
-        - name: Auth engines configuration
+        - name: Post-Install | | Auth engines configuration
           import_tasks: vault_post_install_auth_engines.yml
 
-        - name: Secrets engines configuration
+        - name: Post-Install | | Secrets engines configuration
           import_tasks: vault_post_install_secrets_engines.yml
 
         # TODO: set a local fact in pre_install to manage this
-        - name: Create an env file containing the token
+        - name: Post-Install | | Create an env file containing the token
           when:
             - vault_token_create_env_file | lower == 'true'
           block:
-            - name: Create .vault.env
+            - name: Post-Install | | Create .vault.env
               file:
                 path: "{{ vault_env_root_path }}/.vault.env"
                 state: touch
 
-            - name: Create an env file containing the token
+            - name: Post-Install | | Create an env file containing the token
               lineinfile:
                 path: "{{ vault_env_root_path }}/.vault.env"
                 state: present
                 regexp: "^(VAULT_TOKEN=.+){0,1}$"
                 line: "VAULT_TOKEN={{ vault_root_token }}"
 
-        - name: Store the bootstrap token into consul
+        - name: Post-Install | | Store the bootstrap token into consul
           when: vault_token_store_consul_kv | lower == 'true'
           import_tasks: vault_post_install_store_consul.yml
           vars:
             path: "vault/root_token"
             value: "{{ vault_root_token }}"
 
-        - name: Store vault keys into consul
+        - name: Post-Install | | Store vault keys into consul
           when: vault_keys_store_consul_kv | lower == 'true'
           import_tasks: vault_post_install_store_consul.yml
           vars:
             path: "vault/keys"
             value: "{{ vault_init.unseal_keys_hex }}"
 
-        - name: Store the bootstrap token into swift
+        - name: Post-Install | | Store the bootstrap token into swift
           when: vault_token_store_swift | lower == 'true'
           shell: echo {{ vault_root_token }} | swift upload --object-name=root_token vault -
               
-        - name: Store vault keys into swift
+        - name: Post-Install | | Store vault keys into swift
           when: vault_keys_store_swift | lower == 'true'
           shell: echo {{ vault_init.unseal_keys_hex | to_json }} | swift upload --object-name=keys vault -

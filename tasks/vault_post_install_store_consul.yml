@@ -1,6 +1,6 @@
 ---
 
-- name: Store value to {{ path }}
+- name: Post-Install | store consul | Store value to {{ path }}
   shell: consul kv put {{ path }} "{{ value }}"
   environment:
     CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"

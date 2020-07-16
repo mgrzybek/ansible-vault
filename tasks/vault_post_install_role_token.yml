@@ -1,23 +1,23 @@
 ---
 
-- name: Generate token file
+- name: Post-Install | role token | Generate token file
   template:
     src: token.json.j2
     dest: /dev/shm/token.json
   vars:
     data: "{{ item.strategy }}"
 
-- name: Generate the token
+- name: Post-Install | role token | Generate the token
   environment:
     VAULT_TOKEN: "{{ vault_root_token }}"
     VAULT_ADDR: "{{ vault_addr }}"
   shell: >
         vault write /auth/token/roles/{{ item.role }} @/dev/shm/token.json
 
-- name: Cleanup
+- name: Post-Install | role token | Cleanup
   file: path=/dev/shm/token.json state=absent
 
-- name: Generate the token
+- name: Post-Install | role token | Generate the token
   register: result_token
   environment:
     VAULT_TOKEN: "{{ vault_root_token }}"
@@ -31,17 +31,17 @@
             {% endif %}
             -format=json
 
-- name: Set local fact
+- name: Post-Install | role token | Set local fact
   set_fact: token="{{ result_token.stdout | from_json }}"
 
-- name: Push token to consul kv
+- name: Post-Install | role token | Push token to consul kv
   when:
     - vault_keys_store_consul_kv | lower == 'true'
   shell: consul kv put nomad/token_{{ item.role }} "{{ token.auth.client_token }}"
   environment:
     CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
 
-- name: Push token to swift
+- name: Post-Install | role token | Push token to swift
   when:
     - vault_keys_store_swift | lower == 'true'
   shell: echo {{ token.auth.client_token }} | swift upload --object-name=token_{{ item.role }} nomad -

@@ -1,21 +1,21 @@
 ---
  
-- name: Post install - Get root token from .vault.env
+- name: Post-Install | get token | Post install - Get root token from .vault.env
   when: vault_token_create_env_file | lower == 'true'
   block:
-    - name: Post install - Check .vault.env file
+    - name: Post-Install | get token | Post install - Check .vault.env file
       stat: path="{{ vault_env_root_path }}/.vault.env"
       register: vault_env_result
 
-    - name: Post install - Get root token from .vault.env file
+    - name: Post-Install | get token | Post install - Get root token from .vault.env file
       when: vault_env_result.stat.exists | lower == 'true'
       set_fact:
         vault_root_token: "{{ lookup('file', '{{ vault_env_root_path }}/.vault.env') | regex_replace('^VAULT_TOKEN=','')}}"
 
-- name: Post install - Get root token from consul kv
+- name: Post-Install | get token | Post install - Get root token from consul kv
   when: vault_token_store_consul_kv | lower == 'true'
   block:
-    - name: Post install - Get root token from consul kv
+    - name: Post-Install | get token | Post install - Get root token from consul kv
       until: consul_kv_root_token.stdout | length > 0
       retries: 10
       delay: 30
@@ -24,14 +24,14 @@
       environment:
         CONSUL_HTTP_TOKEN: "{{ vault_consul_token }}"
 
-    - name: Post install - Set vault_root_token fact
+    - name: Post-Install | get token | Post install - Set vault_root_token fact
       set_fact:
         vault_root_token: "{{ consul_kv_root_token.stdout }}"
 
-- name: Post install - Get root token from swift
+- name: Post-Install | get token | Post install - Get root token from swift
   when: vault_token_store_swift | lower == 'true'
   block:
-    - name: Post install - Get root token from swift
+    - name: Post-Install | get token | Post install - Get root token from swift
       until: swift_root_token.stdout | length > 0
       retries: 10
       delay: 30
@@ -44,6 +44,6 @@
         OS_PROJECT_ID: "{{ lookup('env', 'OS_PROJECT_ID') }}"
         OS_USER_DOMAIN_NAME: "{{ lookup('env', 'OS_USER_DOMAIN_NAME') }}"
 
-    - name: Post install - Set vault_root_token fact
+    - name: Post-Install | get token | Post install - Set vault_root_token fact
       set_fact:
         vault_root_token: "{{ swift_root_token.stdout }}"

@@ -1,11 +1,11 @@
 ---
 
-- name: Create policy HCL file
+- name: Post-Install | policy | Create policy HCL file
   template:
     src: policy.hcl.j2
     dest: /tmp/policy.hcl
 
-- name: Configure policies
+- name: Post-Install | policy | Configure policies
   environment:
     VAULT_TOKEN: "{{ vault_root_token }}"
     VAULT_ADDR: "{{ vault_addr }}"

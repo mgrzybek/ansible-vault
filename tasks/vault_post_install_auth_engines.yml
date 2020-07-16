@@ -1,11 +1,11 @@
 --- 
 
-- name: Enable LDAP auth engine
+- name: Post-Install | auth engines | Enable LDAP auth engine
   when:
     - vault_auth_ldap is defined
     - vault_auth_ldap | length > 0
   block:
-    - name: Enable LDAP auth engine
+    - name: Post-Install | auth engines | Enable LDAP auth engine
       with_items: "{{ vault_auth_ldap }}"
       environment:
          VAULT_TOKEN: "{{ vault_root_token }}"
@@ -19,7 +19,7 @@
              {% endif %}
              ldap
 
-    - name: Configure LDAP auth engine
+    - name: Post-Install | auth engines | Configure LDAP auth engine
       with_items: "{{ vault_auth_ldap }}"
       environment:
          VAULT_TOKEN: "{{ vault_root_token }}"

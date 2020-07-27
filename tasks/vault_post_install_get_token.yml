@@ -1,7 +1,9 @@
 ---
  
 - name: Post-Install | get token | Post install - Get root token from .vault.env
-  when: vault_token_create_env_file | lower == 'true'
+  when:
+    - vault_token_create_env_file | lower == 'true'
+    - vault_root_token is undefined
   block:
     - name: Post-Install | get token | Post install - Check .vault.env file
       stat: path="{{ vault_env_root_path }}/.vault.env"
@@ -13,7 +15,9 @@
         vault_root_token: "{{ lookup('file', '{{ vault_env_root_path }}/.vault.env') | regex_replace('^VAULT_TOKEN=','')}}"
 
 - name: Post-Install | get token | Post install - Get root token from consul kv
-  when: vault_token_store_consul_kv | lower == 'true'
+  when:
+    - vault_token_store_consul_kv | lower == 'true'
+    - vault_root_token is undefined
   block:
     - name: Post-Install | get token | Post install - Get root token from consul kv
       until: consul_kv_root_token.stdout | length > 0
@@ -29,7 +33,9 @@
         vault_root_token: "{{ consul_kv_root_token.stdout }}"
 
 - name: Post-Install | get token | Post install - Get root token from swift
-  when: vault_token_store_swift | lower == 'true'
+  when:
+    - vault_token_store_swift | lower == 'true'
+    - vault_root_token is undefined
   block:
     - name: Post-Install | get token | Post install - Get root token from swift
       until: swift_root_token.stdout | length > 0

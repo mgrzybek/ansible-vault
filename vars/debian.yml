@@ -1,8 +1,10 @@
 ---
 
 vault_distro_packages:
-  - unzip
+- vault
 
 vault_sysconfig: /etc/default/vault
+vault_conf_file: /etc/vault.d/vault.hcl
 
-vault_install_prefix: /usr/local/bin
+vault_apt_key: https://apt.releases.hashicorp.com/gpg
+vault_apt_repo: deb [arch=amd64] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main

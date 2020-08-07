@@ -28,6 +28,7 @@
 
 - name: Pre-Install | Set local facts
   set_fact:
+    use_consul: false
     use_firewalld: false
     install_vault: false
     configure_consul_vault_ui: false
@@ -52,64 +53,11 @@
   shell: systemctl is-active consul 2>/dev/null || echo ko && exit 0
   register: consul_service
 
-- name: Pre-Install | Check de la presence actuelle de vault
-  stat: path={{ vault_install_prefix }}/vault get_checksum=no
-  register: vault_bin_stats
-
-- name: Pre-Install | Check de la version de vault
-  when: vault_bin_stats.stat.exists
-  shell: >
-    "{{ vault_install_prefix }}"/vault --version \
-    | awk -Fv '/^Vault/ {print $2}'
-  register: vault_bin_version
-
-- name: Pre-Install | Set vault version
-  when:
-    - vault_package_state == 'present'
-    - vault_bin_version.stdout | default('') != vault_vault_version or not vault_bin_version is defined
-  set_fact:
-    version_to_install: "{{ vault_vault_version }}"
-    install_vault: true
-
-- name: Pre-Install | Last version
-  when: vault_package_state == 'latest'
-  block:
-    - name: Pre-Install | Recuperation de la derniere version en ligne
-      register: last_version
-      shell: >
-        warn=False \
-        curl \
-            {% if vault_http_proxy is defined and vault_http_proxy != '' %}-x {{ vault_http_proxy }}{% endif %} \
-            -s https://releases.hashicorp.com/vault/ \
-            | awk -F = '/vault_/ {gsub("\>.+$","");gsub("\"","");print $2}' \
-            | grep -v rc | grep -v beta | \
-            | head -n 1 | awk -F/ '{print $3}'
-
-    - name: Pre-Install | Test version
-      when: last_version.stdout == "" 
-      fail: msg="Cannot get last version"
-
-    - name: Pre-Install | Set installation facts
-      when: vault_bin_version.stdout | default('') != last_version.stdout or not vault_bin_version is defined
-      set_fact:
-        version_to_install: "{{ last_version.stdout }}"
-        install_vault: true
+- name: Pre-Install | Set local facts
+  fact:
+    use_consul: true
+    configure_consul_vault_ui: true
 
 #- name: Pre-Install | Check telegraf
 #  shell: systemctl is-active telegraf 2>/dev/null || echo ko && exit 0
 #  register: telegraf_service
-
-- name: Pre-Install | Create consul_bin variable
-  when:
-    - vault_enable_ui | lower == 'true'
-    - consul_service.stdout.find('ko') < 0
-  block:
-    - name: Pre-Install | Récupération du path de la commande consul
-      shell: systemctl show -p ExecStart consul|tr ' ' '\n'|awk -F= '/path=/ {print $2}'
-      register: consul_bin_path
-
-    - name: Pre-Install | Set consul bin path
-      set_fact: consul_bin="{{ consul_bin_path.stdout }}"
-
-    - name: Pre-Install | Activate nomad ui as a consul service
-      set_fact: configure_consul_vault_ui=true

@@ -54,7 +54,7 @@
   register: consul_service
 
 - name: Pre-Install | Set local facts
-  fact:
+  set_fact:
     use_consul: true
     configure_consul_vault_ui: true
 

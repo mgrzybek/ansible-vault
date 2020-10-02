@@ -37,7 +37,7 @@ vault_vault_ui:
         tags:
             - "vault"
         checks:
-            - http: "http://0.0.0.0:8200"
+            - http: "http://0.0.0.0:8200/v1/sys/health"
               interval: "60s"
 
 vault_token_create_env_file: true

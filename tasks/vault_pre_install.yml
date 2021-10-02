@@ -26,8 +26,10 @@
     - vault_keys_store_consul_kv | lower != vault_keys_store_swift | lower
 
 - name: Pre-Install | Check firewalld
-  shell: systemctl is-active firewalld.service 2>/dev/null || echo ko && exit 0
+  shell: systemctl is-active firewalld.service
+  when: ansible_system | lower == "linux"
   register: firewalld_service
+  changed_when: false
 
 - name: Pre-Install | Set local facts
   set_fact:
@@ -48,19 +50,28 @@
     vault_env_root_path: "{{ ansible_env.HOME }}"
 
 - name: Pre-Install | Set firewall facts
-  when: firewalld_service.stdout.find('active') > -1
+  when:
+  - ansible_system | lower == "linux"
+  - firewalld_service is success
   set_fact:
     use_firewalld: true
 
 - name: Pre-Install | Check if consul is running
-  shell: systemctl is-active consul 2>/dev/null || echo ko && exit 0
+  command: consul status
   register: consul_service
+  changed_when: false
+  fail_when: false
 
 - name: Pre-Install | Set local facts
+  when: consul_service is success
   set_fact:
     use_consul: true
     configure_consul_vault_ui: true
 
 #- name: Pre-Install | Check telegraf
-#  shell: systemctl is-active telegraf 2>/dev/null || echo ko && exit 0
+#  when:
+#  - ansible_system | lower == "linux"
+#  command: systemctl is-active telegraf
 #  register: telegraf_service
+#  changed_when: false
+#  fail_when: false

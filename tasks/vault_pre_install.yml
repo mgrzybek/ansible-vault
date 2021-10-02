@@ -1,26 +1,29 @@
 ---
 
 - name: Pre-Install | Check Openstack credentials
-  fail: msg="Openstack credencials must be present"
-  when: (lookup('env', 'OS_USERNAME') is undefined
-    or lookup('env', 'OS_PASSWORD') is undefined
-    or lookup('env', 'OS_AUTH_URL') is undefined
-    or lookup('env', 'OS_PROJECT_ID') is undefined
-    or lookup('env', 'OS_USER_DOMAIN_NAME') is undefined)
-    and (vault_token_store_swift | lower == 'true'
-    or vault_keys_store_swift | lower == 'true')
+  when:
+  - vault_token_store_swift | lower == 'true'
+  - vault_keys_store_swift | lower == 'true'
+  assert:
+    fail_msg: Openstack credencials must be present
+    that:
+    - lookup('env', 'OS_USERNAME') is defined
+    - lookup('env', 'OS_PASSWORD') is defined
+    - lookup('env', 'OS_AUTH_URL') is defined
+    - lookup('env', 'OS_PROJECT_ID') is defined
+    - lookup('env', 'OS_USER_DOMAIN_NAME') is defined
 
 - name: Pre-Install | Check token storage
-  fail: msg="vault_token_store_consul_kv and vault_token_store_swift are exclusive"
-  when:
-    - vault_token_store_consul_kv | lower == 'true'
-    - vault_token_store_swift | lower == 'true'
+  assert:
+    fail_msg: vault_token_store_consul_kv and vault_token_store_swift are exclusive
+    that:
+    - vault_token_store_consul_kv | lower != vault_token_store_swift | lower
  
 - name: Pre-Install | Check keys storage
-  fail: msg="vault_keys_store_consul_kv and vault_keys_store_swift are exclusive"
-  when:
-    - vault_keys_store_consul_kv | lower == 'true'
-    - vault_keys_store_swift | lower == 'true'
+  assert:
+    fail_msg: vault_keys_store_consul_kv and vault_keys_store_swift are exclusive
+    that:
+    - vault_keys_store_consul_kv | lower != vault_keys_store_swift | lower
 
 - name: Pre-Install | Check firewalld
   shell: systemctl is-active firewalld.service 2>/dev/null || echo ko && exit 0

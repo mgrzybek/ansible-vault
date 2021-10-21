@@ -1,5 +1,3 @@
----
-
 - name: Pre-Install | Check Openstack credentials
   when:
   - vault_token_store_swift | lower == 'true'
@@ -13,31 +11,53 @@
     - lookup('env', 'OS_PROJECT_ID') is defined
     - lookup('env', 'OS_USER_DOMAIN_NAME') is defined
 
-- name: Pre-Install | Check token storage
-  assert:
-    fail_msg: vault_token_store_consul_kv and vault_token_store_swift are exclusive
-    that:
-    - vault_token_store_consul_kv | lower != vault_token_store_swift | lower
- 
-- name: Pre-Install | Check keys storage
-  assert:
-    fail_msg: vault_keys_store_consul_kv and vault_keys_store_swift are exclusive
-    that:
-    - vault_keys_store_consul_kv | lower != vault_keys_store_swift | lower
+- name: Pre-Install | Token storage activation
+  when:
+  - vault_token_store_consul_kv | lower == "true" or vault_token_store_swift | lower == "true"
+  block:
+  - name: Pre-Install | Check token storage
+    assert:
+      fail_msg: vault_token_store_consul_kv and vault_token_store_swift are exclusive
+      that:
+      - vault_token_store_consul_kv | lower != vault_token_store_swift | lower
 
-- name: Pre-Install | Check firewalld
-  shell: systemctl is-active firewalld.service
-  when: ansible_system | lower == "linux"
-  register: firewalld_service
-  changed_when: false
+- name: Pre-Install | Keys storage activation
+  when:
+  - vault_keys_store_consul_kv | lower == "true" or vault_keys_store_swift | lower == "true"
+  block:
+  - name: Pre-Install | Check keys storage
+    assert:
+      fail_msg: vault_keys_store_consul_kv and vault_keys_store_swift are exclusive
+      that:
+      - vault_keys_store_consul_kv | lower != vault_keys_store_swift | lower
 
 - name: Pre-Install | Set local facts
   set_fact:
     use_consul: false
     use_firewalld: false
     install_vault: false
+    vault_disable_mlock: false
     configure_consul_vault_ui: false
-    vault_addr: "http{% if vault_tls_disable != 1 %}s{% endif %}://{{ vault_tcp_listener }}"
+    vault_addr: http{% if vault_tls_disable != 1 %}s{% endif %}://{{ vault_tcp_listener }}
+
+
+- name: Pre-Install | Check memory locking
+  when: ansible_distribution | lower != "linux"
+  block:
+  - name: Pre-Install | Get sysctl parameter
+    when:
+    - ansible_virtualization_role | lower == "guest"
+    - ansible_virtualization_type | lower == "jails"
+    command: sysctl -e security.jail.param.allow.mlock
+    register: sysctl_mlock
+    changed_when: false
+
+  - name: Pre-Install | Set mlock fact
+    when:
+    - sysctl_mlock is defined
+    - sysctl_mlock.stdout | regex_replace('^.+=','') | int == 0
+    set_fact:
+      vault_disable_mlock: true
 
 - name: Pre-Install | Set local facts (home)
   when: ansible_env.HOME is undefined
@@ -47,20 +67,27 @@
 - name: Pre-Install | Set local facts (home)
   when: ansible_env.HOME is defined
   set_fact:
-    vault_env_root_path: "{{ ansible_env.HOME }}"
+    vault_env_root_path: '{{ ansible_env.HOME }}'
 
-- name: Pre-Install | Set firewall facts
-  when:
-  - ansible_system | lower == "linux"
-  - firewalld_service is success
-  set_fact:
-    use_firewalld: true
+- name: Pre-Install | Check linux specific facts
+  when: ansible_distribution | lower == "linux"
+  block:
+  - name: Pre-Install | Check firewalld
+    command: systemctl is-active firewalld.service
+    changed_when: false
+    failed_when: false
+    register: firewalld_service
+
+  - name: Pre-Install | Set firewall facts
+    when: firewalld_service is success
+    set_fact:
+      use_firewalld: true
 
 - name: Pre-Install | Check if consul is running
-  command: consul status
-  register: consul_service
+  command: consul members
   changed_when: false
-  fail_when: false
+  ignore_errors: true
+  register: consul_service
 
 - name: Pre-Install | Set local facts
   when: consul_service is success

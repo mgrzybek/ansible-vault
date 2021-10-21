@@ -1,9 +1,7 @@
----
-
 vault_distro_packages:
 - vault
 
 vault_sysconfig: /etc/rc.conf.d/vault
-vault_conf_file: /usr/local/etc/vault.d/vault.hcl
+vault_conf_file: /usr/local/etc/vault.hcl
 
 vault_consul_services_path: /usr/local/etc/consul.d

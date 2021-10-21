@@ -1,9 +1,7 @@
----
-
 - name: Install | Install vault packages
   package:
-    name: "{{ vault_distro_packages }}"
-    state: "{{ vault_package_state }}"
+    name: '{{ vault_distro_packages }}'
+    state: '{{ vault_package_state }}'
     update_cache: "{{ (ansible_pkg_mgr == 'apt') | ternary('yes', omit) }}"
     cache_valid_time: "{{ (ansible_pkg_mgr == 'apt') | ternary(cache_timeout, omit) }}"
   register: install_packages
@@ -11,10 +9,17 @@
   retries: 5
   delay: 2
   tags:
-    - install-apt
-    - install-yum
-    - install-zypper
+  - install-apt
+  - install-yum
+  - install-zypper
 
 - name: Install | Systemd service
+  when: ansible_distribution | lower == "linux"
   template: src=vault.service.j2 dest=/etc/systemd/system/vault.service
   notify: reload systemd
+
+- name: Install | Create configuration directories
+  when: ansible_distribution | lower == "freebsd"
+  file:
+    state: directory
+    path: '{{ vault_conf_file | dirname }}'

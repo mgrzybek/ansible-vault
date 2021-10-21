@@ -1,5 +1,9 @@
 # {{ ansible_managed }}
 
+{% if vault_disable_mlock | lower == "true" %}
+disable_mlock = true
+{% endif %}
+
 storage "consul" {
 	address = "{{ vault_storage_consul }}"
 	path    = "vault/"

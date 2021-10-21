@@ -8,3 +8,4 @@ vault_conf_file: /etc/vault.d/vault.hcl
 
 vault_apt_key: https://apt.releases.hashicorp.com/gpg
 vault_apt_repo: deb [arch=amd64] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main
+vault_consul_services_path: /etc/consul.d

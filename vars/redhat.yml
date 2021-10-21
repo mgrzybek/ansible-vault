@@ -8,3 +8,4 @@ vault_conf_file: /etc/vault.d/vault.hcl
 
 vault_rpm_key: https://apt.releases.hashicorp.com/gpg
 vault_rpm_repo: https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
+vault_consul_services_path: /etc/consul.d
